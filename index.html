@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsOS — AI-Native Business News Platform</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-dark: #050a14;
+            --bg-card: #0d1526;
+            --gold: #c9a84c;
+            --gold-light: #e0c87d;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --accent: #1e293b;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            margin: 0;
+            overflow-x: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .light-theme {
+            --bg-dark: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --accent: #e2e8f0;
+        }
+
+        h1, h2, h3, .headline {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .mono {
+            font-family: 'DM Mono', monospace;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .light-theme .glass {
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .gold-gradient {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-up {
+            animation: fadeUp 0.6s ease forwards;
+        }
+
+        .hover-scale {
+            transition: transform 0.3s ease;
+        }
+
+        .hover-scale:hover {
+            transform: scale(1.02);
+        }
+
+        .news-card-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease, opacity 0.5s ease;
+            opacity: 0;
+        }
+
+        .news-card:hover .news-card-details {
+            max-height: 200px;
+            opacity: 1;
+            margin-top: 1rem;
+        }
+
+        .news-card-actions {
+            transform: translateY(10px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .news-card:hover .news-card-actions {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 10px; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 50;
+            transition: transform 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+        }
+
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 768px) {
+            .main-content { margin-left: 0; }
+        }
+
+        /* Video Studio Preview */
+        .video-preview {
+            width: 100%;
+            max-width: 320px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            aspect-ratio: 9/16; /* Default */
+            transition: all 0.5s ease;
+        }
+
+        .scene-transition {
+            transition: opacity 0.8s ease, transform 1.2s ease;
+        }
+
+        /* Toast */
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 100;
+        }
+
+        .toast {
+            padding: 12px 24px;
+            border-radius: 8px;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease forwards;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .animate-marquee {
+            display: flex;
+            animation: marquee 40s linear infinite;
+        }
+
+        .animate-marquee:hover {
+            animation-play-state: paused;
+        }
+
+        /* API Setup Modal */
+        #api-setup-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 10, 20, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        #api-setup-modal.active {
+            display: flex;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .offline-indicator {
+            display: none;
+            background: #ef4444;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        body.is-offline .offline-indicator {
+            display: inline-block;
+        }
+
+        body.is-offline .online-only {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar glass border-r border-white/5 flex flex-col p-6">
+        <div class="mb-8">
+            <p id="current-date" class="text-[10px] font-bold text-gold uppercase tracking-widest mb-1"></p>
+            <p id="current-time" class="text-2xl font-bold tracking-tighter opacity-50"></p>
+        </div>
+        <div class="flex items-center gap-3 mb-12">
+            <div class="w-10 h-10 bg-gold-gradient rounded-xl flex items-center justify-center">
+                <i data-lucide="zap" class="text-white w-6 h-6"></i>
+            </div>
+            <h1 class="text-2xl font-bold tracking-tighter">News<span class="text-gold">OS</span></h1>
+        </div>
+
+        <nav class="flex-1 space-y-2">
+            <button onclick="switchModule('newsroom')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left" id="nav-newsroom">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span>My Newsroom</span>
+            </button>
+            <button onclick="switchModule('navigator')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left" id="nav-navigator">
+                <i data-lucide="search" class="w-5 h-5"></i>
+                <span>Navigator</span>
+            </button>
+            <button onclick="switchModule('studio')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left" id="nav-studio">
+                <i data-lucide="video" class="w-5 h-5"></i>
+                <span>Video Studio</span>
+            </button>
+            <button onclick="switchModule('tracker')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left" id="nav-tracker">
+                <i data-lucide="trending-up" class="w-5 h-5"></i>
+                <span>Story Arc</span>
+            </button>
+            <button onclick="switchModule('vernacular')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left" id="nav-vernacular">
+                <i data-lucide="languages" class="w-5 h-5"></i>
+                <span>Vernacular</span>
+            </button>
+        </nav>
+
+        <div class="mt-auto pt-6 border-t border-white/5 space-y-4">
+            <div class="flex items-center justify-between">
+                <span class="text-xs text-secondary uppercase tracking-widest font-bold">Theme</span>
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full glass flex items-center justify-center hover:bg-white/10 transition-all">
+                    <i data-lucide="moon" id="theme-icon" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="space-y-2">
+                <label class="text-xs text-secondary uppercase tracking-widest font-bold">Profession</label>
+                <select id="profession-select" onchange="updateProfession(this.value)" class="w-full bg-transparent border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">
+                    <option value="investor">Investor</option>
+                    <option value="founder">Founder</option>
+                    <option value="analyst">Analyst</option>
+                    <option value="student">Student</option>
+                </select>
+            </div>
+            <div class="p-4 rounded-xl bg-gold/10 border border-gold/20">
+                <p class="text-xs text-gold font-bold mb-2">API KEY STATUS</p>
+                <div class="flex items-center gap-2">
+                    <div id="api-status-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span id="api-status-text" class="text-[10px] uppercase tracking-tighter">Not Configured</span>
+                </div>
+                <button onclick="promptApiKey()" class="mt-2 text-[10px] underline hover:text-gold transition-all">Update Key</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content flex flex-col">
+        <!-- Topbar -->
+        <header class="sticky top-0 z-40 glass border-b border-white/5 px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-6 overflow-hidden flex-1">
+                <div class="flex items-center gap-2 text-xs font-bold text-gold shrink-0">
+                    <i data-lucide="activity" class="w-4 h-4 animate-pulse"></i>
+                    <span>LIVE MARKETS</span>
+                </div>
+                <div id="ticker-wrapper" class="ticker-container flex gap-8 animate-marquee whitespace-nowrap text-xs mono">
+                    <!-- Ticker items will be injected here -->
+                    <span class="ticker-item">LOADING LIVE MARKET DATA...</span>
+                </div>
+                <div class="offline-indicator animate-pulse">Offline Mode</div>
+            </div>
+            <div class="flex items-center gap-4 ml-8">
+                <button class="md:hidden" onclick="toggleSidebar()">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <div class="w-8 h-8 rounded-full bg-gold-gradient flex items-center justify-center text-xs font-bold text-white">
+                    VS
+                </div>
+            </div>
+        </header>
+
+        <!-- Module Containers -->
+        <div id="module-newsroom" class="module p-8 space-y-8 animate-fade-up">
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                    <p class="text-gold font-bold uppercase tracking-[0.2em] text-xs mb-2">Decision Dashboard</p>
+                    <h2 class="text-4xl font-bold">My Newsroom</h2>
+                </div>
+                <div class="flex gap-4">
+                    <div class="glass p-4 rounded-2xl border border-white/5 flex items-center gap-4">
+                        <div class="text-right">
+                            <p class="text-[10px] text-secondary uppercase font-bold">Sector Sentiment</p>
+                            <p class="text-sm font-bold">Tech: Bullish</p>
+                        </div>
+                        <div class="w-12 h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div class="h-full bg-green-500" style="width: 75%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Impact Banner -->
+            <div id="impact-banner" class="relative h-48 rounded-3xl overflow-hidden glass border border-white/10 flex items-center px-12">
+                <div class="absolute inset-0 bg-gradient-to-r from-bg-dark to-transparent z-0"></div>
+                <div class="relative z-10 max-w-2xl">
+                    <span class="bg-gold/20 text-gold text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest mb-4 inline-block">AI Insight</span>
+                    <h3 id="impact-headline" class="text-2xl font-bold mb-2">Global Markets Bracing for Fed Decision</h3>
+                    <p id="impact-summary" class="text-secondary text-sm">AI predicts a 65% chance of rate hold, favoring long-term equity positions in emerging markets.</p>
+                </div>
+            </div>
+
+            <!-- News Grid -->
+            <div id="news-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Cards will be injected here -->
+            </div>
+        </div>
+
+        <div id="module-navigator" class="module p-8 space-y-8 hidden animate-fade-up">
+            <div class="max-w-4xl mx-auto space-y-8">
+                <div class="text-center space-y-4">
+                    <h2 class="text-5xl font-bold">News Navigator</h2>
+                    <p class="text-secondary">Replace 10 articles with one intelligent briefing.</p>
+                </div>
+
+                <div class="relative">
+                    <input type="text" id="navigator-query" placeholder="Enter a topic (e.g., Future of EV in India, AI Regulation)..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-lg focus:outline-none focus:border-gold transition-all">
+                    <button onclick="generateBriefing()" class="absolute right-3 top-3 bottom-3 bg-gold-gradient text-white px-8 rounded-xl font-bold hover:opacity-90 transition-all flex items-center gap-2">
+                        <span id="brief-btn-text">Brief Me</span>
+                        <div id="brief-btn-spinner" class="spinner hidden"></div>
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-3">
+                    <button onclick="setQuery('Nvidia Earnings Impact')" class="px-4 py-2 rounded-full glass border border-white/10 text-xs hover:border-gold transition-all">Nvidia Earnings</button>
+                    <button onclick="setQuery('Crypto Regulation 2024')" class="px-4 py-2 rounded-full glass border border-white/10 text-xs hover:border-gold transition-all">Crypto Regs</button>
+                    <button onclick="setQuery('Green Hydrogen Policy')" class="px-4 py-2 rounded-full glass border border-white/10 text-xs hover:border-gold transition-all">Green Hydrogen</button>
+                    <button onclick="setQuery('Startup Funding Winter')" class="px-4 py-2 rounded-full glass border border-white/10 text-xs hover:border-gold transition-all">Funding Winter</button>
+                </div>
+
+                <div id="briefing-result" class="grid grid-cols-1 lg:grid-cols-3 gap-8 hidden">
+                    <div class="lg:col-span-2 space-y-8">
+                        <div class="glass p-8 rounded-3xl border border-white/10 space-y-6">
+                            <h3 id="brief-headline" class="text-3xl font-bold"></h3>
+                            <p id="brief-summary" class="text-lg text-secondary leading-relaxed"></p>
+                            
+                            <div class="space-y-4">
+                                <h4 class="text-gold font-bold uppercase tracking-widest text-xs">Key Insights</h4>
+                                <div id="brief-insights" class="space-y-3"></div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="p-4 rounded-2xl bg-red-500/5 border border-red-500/20">
+                                    <h4 class="text-red-500 font-bold text-xs uppercase mb-2">Contradiction A</h4>
+                                    <p id="brief-contra-a" class="text-sm text-secondary"></p>
+                                </div>
+                                <div class="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20">
+                                    <h4 class="text-blue-500 font-bold text-xs uppercase mb-2">Contradiction B</h4>
+                                    <p id="brief-contra-b" class="text-sm text-secondary"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="glass p-6 rounded-3xl border border-white/10 h-[500px] flex flex-col">
+                            <h4 class="text-gold font-bold uppercase tracking-widest text-xs mb-4">AI Chat Assistant</h4>
+                            <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 mb-4 text-sm">
+                                <div class="bg-white/5 p-3 rounded-xl">Hello! I've analyzed the topic. Ask me anything about it.</div>
+                            </div>
+                            <div class="relative">
+                                <input type="text" id="chat-input" placeholder="Ask a question..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold">
+                                <button onclick="sendChatMessage()" class="absolute right-2 top-2 bottom-2 text-gold hover:text-white transition-all">
+                                    <i data-lucide="send" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="module-studio" class="module p-8 space-y-8 hidden animate-fade-up">
+            <div class="flex flex-col md:flex-row gap-12 max-w-6xl mx-auto">
+                <div class="flex-1 space-y-8">
+                    <div>
+                        <h2 class="text-4xl font-bold">AI Video Studio</h2>
+                        <p class="text-secondary">Turn any story into a cinematic vertical video.</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="text-xs text-secondary uppercase font-bold tracking-widest">Source Material</label>
+                        <textarea id="studio-input" placeholder="Paste an article or describe a topic..." class="w-full h-48 bg-white/5 border border-white/10 rounded-2xl p-6 focus:outline-none focus:border-gold transition-all resize-none"></textarea>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <button onclick="generateVideoScript()" class="flex-1 bg-gold-gradient text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 transition-all online-only">
+                            <span id="video-btn-text">Generate Storyboard</span>
+                            <div id="video-btn-spinner" class="spinner hidden"></div>
+                        </button>
+                        <button onclick="shareVideo()" id="video-share-btn" class="hidden glass p-4 rounded-2xl border border-white/10 text-gold hover:bg-gold hover:text-white transition-all">
+                            <i data-lucide="share-2" class="w-6 h-6"></i>
+                        </button>
+                        <select id="video-lang" class="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 font-bold focus:outline-none">
+                            <option value="en-IN">English</option>
+                            <option value="hi-IN">Hindi</option>
+                            <option value="ta-IN">Tamil</option>
+                        </select>
+                        <select id="video-ratio" class="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 font-bold focus:outline-none" onchange="updateVideoRatio()">
+                            <option value="9/16">Vertical (9:16)</option>
+                            <option value="16/9">Landscape (16:9)</option>
+                            <option value="1/1">Square (1:1)</option>
+                        </select>
+                        <select id="video-transition" class="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 font-bold focus:outline-none">
+                            <option value="fade">Fade</option>
+                            <option value="slide">Slide</option>
+                            <option value="zoom">Zoom</option>
+                            <option value="none">None</option>
+                        </select>
+                    </div>
+
+                    <div id="scene-list" class="space-y-4">
+                        <!-- Scenes will be listed here -->
+                    </div>
+                </div>
+
+                <div class="w-full md:w-[360px] shrink-0">
+                    <div class="sticky top-32">
+                        <div class="video-preview glass border border-white/10 relative">
+                            <div id="video-canvas" class="absolute inset-0 flex flex-col items-center justify-center text-center p-8 transition-all duration-500">
+                                <div id="video-bg" class="absolute inset-0 bg-cover bg-center opacity-40 transition-all"></div>
+                                <div class="absolute inset-0 bg-gradient-to-b from-transparent via-bg-dark/60 to-bg-dark z-10"></div>
+                                
+                                <div class="relative z-20 mt-auto space-y-4">
+                                    <h3 id="preview-headline" class="text-2xl font-bold leading-tight drop-shadow-lg"></h3>
+                                    <p id="preview-subtitle" class="text-sm text-gold font-bold tracking-widest uppercase"></p>
+                                </div>
+
+                                <div class="absolute top-8 left-8 right-8 z-30 flex gap-1">
+                                    <div class="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                        <div id="video-progress" class="h-full bg-gold w-0 shadow-[0_0_10px_rgba(201,168,76,0.8)]"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="video-overlay" class="absolute inset-0 bg-bg-dark/80 flex flex-col items-center justify-center z-50 transition-all duration-300">
+                                <button onclick="playVideo()" id="play-btn" class="w-20 h-20 rounded-full bg-gold flex items-center justify-center text-white hover:scale-110 transition-all hidden">
+                                    <i data-lucide="play" class="w-10 h-10 fill-current ml-1"></i>
+                                </button>
+                                <p id="video-status" class="text-xs text-secondary uppercase tracking-widest font-bold mt-4">Waiting for storyboard...</p>
+                            </div>
+
+                            <div id="video-controls" class="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 opacity-0 pointer-events-none transition-all duration-300">
+                                <button onclick="togglePause()" id="pause-btn" class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-gold transition-all">
+                                    <i data-lucide="pause" id="pause-icon" class="w-6 h-6"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="module-tracker" class="module p-8 space-y-8 hidden animate-fade-up">
+            <div class="max-w-5xl mx-auto space-y-8">
+                <div class="flex items-end justify-between">
+                    <div>
+                        <h2 class="text-4xl font-bold">Story Arc Tracker</h2>
+                        <p class="text-secondary">Visualizing the evolution of market narratives.</p>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex gap-2 items-center glass px-4 py-2 rounded-xl border border-white/10">
+                            <span class="text-[10px] font-bold text-secondary uppercase tracking-widest">Range</span>
+                            <input type="date" id="tracker-start-date" class="bg-transparent text-xs focus:outline-none">
+                            <span class="text-secondary">-</span>
+                            <input type="date" id="tracker-end-date" class="bg-transparent text-xs focus:outline-none">
+                            <button onclick="filterTimeline()" class="text-gold hover:scale-110 transition-all"><i data-lucide="filter" class="w-4 h-4"></i></button>
+                        </div>
+                        <div class="relative w-72">
+                            <input type="text" id="tracker-query" placeholder="Search story arc..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold">
+                            <button onclick="generateTracker()" class="absolute right-3 top-3 text-gold"><i data-lucide="search" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 space-y-8">
+                        <div class="glass p-8 rounded-3xl border border-white/10">
+                            <h4 class="text-gold font-bold uppercase tracking-widest text-xs mb-6">Sentiment Trajectory</h4>
+                            <div class="h-[300px]">
+                                <canvas id="sentiment-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="glass p-8 rounded-3xl border border-white/10">
+                                <h4 class="text-gold font-bold uppercase tracking-widest text-xs mb-6">Sentiment Distribution</h4>
+                                <div class="h-[250px]">
+                                    <canvas id="sentiment-dist-chart"></canvas>
+                                </div>
+                            </div>
+                            <div class="glass p-8 rounded-3xl border border-white/10">
+                                <h4 class="text-gold font-bold uppercase tracking-widest text-xs mb-6">Entity Mentions</h4>
+                                <div class="h-[250px]">
+                                    <canvas id="entity-mentions-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glass p-8 rounded-3xl border border-white/10">
+                            <div class="flex justify-between items-center mb-6">
+                                <h4 class="text-gold font-bold uppercase tracking-widest text-xs">Timeline Evolution</h4>
+                                <button onclick="resetTimeline()" class="text-[10px] text-secondary hover:text-gold transition-all">Reset Filter</button>
+                            </div>
+                            <div id="tracker-timeline" class="space-y-8 relative before:absolute before:left-2 before:top-2 before:bottom-2 before:w-px before:bg-white/10">
+                                <!-- Timeline items -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-8">
+                        <div class="glass p-6 rounded-3xl border border-white/10">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="text-gold font-bold uppercase tracking-widest text-xs">Key Entities</h4>
+                                <select onchange="sortEntities(this.value)" class="bg-transparent text-[10px] font-bold text-secondary uppercase tracking-widest focus:outline-none">
+                                    <option value="mentions">Mentions</option>
+                                    <option value="sentiment">Sentiment</option>
+                                </select>
+                            </div>
+                            <div id="tracker-entities" class="space-y-4">
+                                <!-- Entities -->
+                            </div>
+                        </div>
+
+                        <div class="glass p-6 rounded-3xl border border-white/10 space-y-4">
+                            <h4 class="text-gold font-bold uppercase tracking-widest text-xs">AI Predictions</h4>
+                            <div id="tracker-predictions" class="space-y-3 text-sm">
+                                <!-- Predictions -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="module-vernacular" class="module p-8 space-y-8 hidden animate-fade-up">
+            <div class="max-w-4xl mx-auto space-y-8">
+                <div class="text-center">
+                    <h2 class="text-4xl font-bold">Vernacular Engine</h2>
+                    <p class="text-secondary">Local intelligence for a global audience.</p>
+                </div>
+
+                <div class="glass p-8 rounded-3xl border border-white/10 space-y-6">
+                    <textarea id="vernacular-input" placeholder="Paste an English article to translate with local context..." class="w-full h-40 bg-white/5 border border-white/10 rounded-2xl p-6 focus:outline-none focus:border-gold transition-all resize-none"></textarea>
+                    <button onclick="generateTranslations()" class="w-full bg-gold-gradient text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 transition-all">
+                        <span id="vern-btn-text">Localize Intelligence</span>
+                        <div id="vern-btn-spinner" class="spinner hidden"></div>
+                    </button>
+                </div>
+
+                <div id="vernacular-results" class="grid grid-cols-1 md:grid-cols-2 gap-6 hidden">
+                    <!-- Translation cards -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- API Setup Modal -->
+    <div id="api-setup-modal" class="animate-fade-up">
+        <div class="glass p-12 rounded-[40px] border border-white/10 max-w-lg w-full text-center space-y-8">
+            <div class="w-20 h-20 bg-gold-gradient rounded-3xl mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(201,168,76,0.3)]">
+                <i data-lucide="key" class="text-white w-10 h-10"></i>
+            </div>
+            <div class="space-y-4">
+                <h2 class="text-4xl font-bold">Configure NewsOS</h2>
+                <p class="text-secondary leading-relaxed">To power the AI-native experience, please provide your Gemini API Key. Your key is stored locally and never leaves your device.</p>
+            </div>
+            <div class="space-y-4">
+                <input type="password" id="modal-api-key" placeholder="Paste your Gemini API Key here..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-center focus:outline-none focus:border-gold transition-all">
+                <button onclick="saveApiKeyFromModal()" class="w-full bg-gold-gradient text-white py-5 rounded-2xl font-bold hover:opacity-90 transition-all shadow-[0_10px_20px_rgba(201,168,76,0.2)]">
+                    Initialize Platform
+                </button>
+                <p class="text-[10px] text-secondary uppercase tracking-widest font-bold">Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-gold underline">Google AI Studio</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+        import { Chart, registerables } from 'chart.js';
+        Chart.register(...registerables);
+
+        // APP State
+        const APP = {
+            apiKey: '',
+            profession: 'investor',
+            theme: 'dark',
+            currentModule: 'newsroom',
+            db: null,
+            videoScript: null,
+            videoRatio: '9/16',
+            isSidebarOpen: false,
+            isOnline: navigator.onLine,
+            isPaused: false,
+            imageCache: new Map(),
+            currentTrackerData: null,
+            charts: {
+                sentiment: null,
+                dist: null,
+                mentions: null
+            }
+        };
+
+        // Attach to window for global access
+        window.APP = APP;
+
+        // Headlines for My Newsroom
+        const MOCK_HEADLINES = [
+            "Reliance Retail valuation hits $100B as global investors pile in.",
+            "RBI keeps repo rates unchanged, signals shift to neutral stance.",
+            "Indian SaaS startups see 40% growth in ARR despite funding winter.",
+            "Nvidia announces new AI chip architecture for edge computing.",
+            "Global supply chains shift towards 'China Plus One' strategy in 2024."
+        ];
+
+        // Initialize
+        async function init() {
+            lucide.createIcons();
+            await initDB();
+            await loadFromDB();
+            renderNewsroom();
+            updateApiStatus();
+            updateOnlineStatus();
+            initTicker();
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            
+            if (!APP.apiKey) {
+                document.getElementById('api-setup-modal').classList.add('active');
+            }
+
+            window.addEventListener('online', updateOnlineStatus);
+            window.addEventListener('offline', updateOnlineStatus);
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            
+            document.getElementById('current-date').innerText = now.toLocaleDateString('en-US', dateOptions);
+            document.getElementById('current-time').innerText = now.toLocaleTimeString('en-US', timeOptions);
+        }
+
+        // IndexedDB
+        async function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('NewsOS_DB', 2);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
+                    if (!db.objectStoreNames.contains('cache')) db.createObjectStore('cache');
+                    if (!db.objectStoreNames.contains('briefings')) db.createObjectStore('briefings');
+                    if (!db.objectStoreNames.contains('trackedStories')) db.createObjectStore('trackedStories');
+                };
+                request.onsuccess = (e) => {
+                    APP.db = e.target.result;
+                    resolve();
+                };
+                request.onerror = reject;
+            });
+        }
+
+        async function saveToDB(store, key, value) {
+            const tx = APP.db.transaction(store, 'readwrite');
+            tx.objectStore(store).put(value, key);
+        }
+
+        async function getFromDB(store, key) {
+            return new Promise((resolve) => {
+                const tx = APP.db.transaction(store, 'readonly');
+                const request = tx.objectStore(store).get(key);
+                request.onsuccess = () => resolve(request.result);
+            });
+        }
+
+        async function getAllFromDB(store) {
+            return new Promise((resolve) => {
+                const tx = APP.db.transaction(store, 'readonly');
+                const request = tx.objectStore(store).getAll();
+                request.onsuccess = () => resolve(request.result);
+            });
+        }
+
+        async function loadFromDB() {
+            // Prioritize injected API key
+            try {
+                const injectedKey = process.env.GEMINI_API_KEY;
+                if (injectedKey && injectedKey !== 'MY_GEMINI_API_KEY') {
+                    APP.apiKey = injectedKey;
+                    saveToDB('settings', 'apiKey', APP.apiKey);
+                } else {
+                    APP.apiKey = await getFromDB('settings', 'apiKey') || '';
+                }
+            } catch (e) {
+                APP.apiKey = await getFromDB('settings', 'apiKey') || '';
+            }
+
+            APP.profession = await getFromDB('settings', 'profession') || 'investor';
+            APP.theme = await getFromDB('settings', 'theme') || 'dark';
+            
+            document.getElementById('profession-select').value = APP.profession;
+            if (APP.theme === 'light') document.body.classList.add('light-theme');
+            updateThemeIcon();
+        }
+
+        // UI Helpers
+        function switchModule(modId) {
+            document.querySelectorAll('.module').forEach(m => m.classList.add('hidden'));
+            document.getElementById(`module-${modId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('bg-gold/10', 'text-gold'));
+            document.getElementById(`nav-${modId}`).classList.add('bg-gold/10', 'text-gold');
+            
+            APP.currentModule = modId;
+
+            if (!APP.isOnline) {
+                if (modId === 'navigator') renderSavedBriefings();
+                if (modId === 'tracker') renderSavedTrackers();
+            }
+
+            if (window.innerWidth < 768) toggleSidebar();
+        }
+
+        function updateOnlineStatus() {
+            APP.isOnline = navigator.onLine;
+            document.body.classList.toggle('is-offline', !APP.isOnline);
+            
+            if (APP.isOnline) {
+                showToast("Connection re-established. Feel free to refresh for latest news.", "success");
+            } else {
+                showToast("You are offline. Viewing saved content.", "error");
+            }
+        }
+
+        async function shareContent(title, text) {
+            const shareData = {
+                title: title,
+                text: text + "\n\nCheck out this AI-powered business insight on NewsOS!",
+                url: window.location.href
+            };
+
+            try {
+                if (navigator.share) {
+                    await navigator.share(shareData);
+                    showToast("Shared successfully", "success");
+                } else {
+                    // Fallback: Copy to clipboard
+                    await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
+                    showToast("Link copied to clipboard", "success");
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    showToast("Sharing failed", "error");
+                }
+            }
+        }
+
+        function toggleSidebar() {
+            APP.isSidebarOpen = !APP.isSidebarOpen;
+            document.querySelector('.sidebar').classList.toggle('active', APP.isSidebarOpen);
+        }
+
+        function toggleTheme() {
+            APP.theme = APP.theme === 'dark' ? 'light' : 'dark';
+            document.body.classList.toggle('light-theme');
+            saveToDB('settings', 'theme', APP.theme);
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const icon = document.getElementById('theme-icon');
+            icon.setAttribute('data-lucide', APP.theme === 'dark' ? 'sun' : 'moon');
+            lucide.createIcons();
+        }
+
+        function updateProfession(val) {
+            APP.profession = val;
+            saveToDB('settings', 'profession', val);
+            showToast(`Profile updated to ${val}`, 'success');
+            if (APP.currentModule === 'newsroom') renderNewsroom();
+        }
+
+        function saveApiKeyFromModal() {
+            const key = document.getElementById('modal-api-key').value.trim();
+            if (key) {
+                APP.apiKey = key;
+                saveToDB('settings', 'apiKey', key);
+                updateApiStatus();
+                document.getElementById('api-setup-modal').classList.remove('active');
+                showToast("Platform initialized successfully", "success");
+                renderNewsroom(); // Re-render to start AI analysis
+            } else {
+                showToast("Please enter a valid API key", "error");
+            }
+        }
+
+        function promptApiKey() {
+            const key = prompt("Enter your Gemini API Key:", APP.apiKey);
+            if (key !== null) {
+                APP.apiKey = key;
+                saveToDB('settings', 'apiKey', key);
+                updateApiStatus();
+                showToast("API Key updated", "success");
+            }
+        }
+
+        function updateApiStatus() {
+            const dot = document.getElementById('api-status-dot');
+            const text = document.getElementById('api-status-text');
+            if (APP.apiKey) {
+                dot.className = 'w-2 h-2 rounded-full bg-green-500';
+                text.innerText = "Connected";
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-red-500';
+                text.innerText = "Not Configured";
+            }
+        }
+
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast glass border ${type === 'success' ? 'border-green-500/50' : type === 'error' ? 'border-red-500/50' : 'border-gold/50'}`;
+            
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5 ${type === 'success' ? 'text-green-500' : type === 'error' ? 'text-red-500' : 'text-gold'}"></i><span>${msg}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Gemini API
+        async function callGemini(systemPrompt, userPrompt, fast = true) {
+            if (!APP.apiKey) {
+                document.getElementById('api-setup-modal').classList.add('active');
+                showToast("API Key required for this feature", "error");
+                throw new Error("No API Key");
+            }
+
+            const cacheKey = await hashString(systemPrompt + userPrompt);
+            const cached = await getFromDB('cache', cacheKey);
+            if (cached) return cached;
+
+            try {
+                const ai = new GoogleGenAI({ apiKey: APP.apiKey });
+                const response = await ai.models.generateContent({
+                    model: "gemini-3-flash-preview",
+                    contents: [{
+                        role: "user",
+                        parts: [{
+                            text: systemPrompt + "\n\n" + userPrompt + "\n\nRespond ONLY in valid JSON."
+                        }]
+                    }],
+                    config: {
+                        thinkingConfig: { thinkingLevel: fast ? ThinkingLevel.LOW : ThinkingLevel.HIGH }
+                    }
+                });
+
+                let text = response.text;
+                text = text.replace(/```json|```/g, "").trim();
+                const result = JSON.parse(text);
+                saveToDB('cache', cacheKey, result);
+                return result;
+            } catch (err) {
+                console.error(err);
+                showToast("AI Generation failed: " + err.message, "error");
+                throw err;
+            }
+        }
+
+        async function hashString(str) {
+            const msgUint8 = new TextEncoder().encode(str);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // 1. MY NEWSROOM
+        async function renderNewsroom() {
+            const grid = document.getElementById('news-grid');
+            grid.innerHTML = '';
+            
+            const fragment = document.createDocumentFragment();
+            
+            // Show skeleton or loading
+            for (let i = 0; i < 5; i++) {
+                const card = document.createElement('div');
+                card.className = 'news-card glass p-6 rounded-3xl border border-white/10 hover-scale animate-fade-up relative overflow-hidden group';
+                card.style.animationDelay = `${i * 0.1}s`;
+                card.id = `news-card-${i}`;
+                
+                const headline = MOCK_HEADLINES[i];
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="text-[10px] font-bold text-gold uppercase tracking-widest">Market News • 2h ago</span>
+                        <div class="impact-badge w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-gold">
+                            --
+                        </div>
+                    </div>
+                    <h3 class="headline text-xl font-bold mb-4 leading-tight">${headline}</h3>
+                    
+                    <div class="ai-summary-container space-y-3 mb-4">
+                        <p class="text-xs text-secondary italic">Analyzing for ${APP.profession}...</p>
+                        <div class="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div class="h-full bg-gold/30 animate-pulse" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <div class="news-card-details space-y-3 border-t border-white/5 pt-4">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-3 h-3 text-gold"></i>
+                            <span class="text-[10px] font-bold uppercase text-gold tracking-widest">Strategic Impact</span>
+                        </div>
+                        <p class="why-matters text-xs text-secondary leading-relaxed"></p>
+                    </div>
+
+                    <div class="news-card-actions flex gap-2 mt-6">
+                        <button onclick="quickBrief('${headline.replace(/'/g, "\\'")}')" class="flex-1 py-2.5 rounded-xl bg-white/5 text-[10px] font-bold uppercase tracking-tighter hover:bg-gold hover:text-white transition-all">Brief</button>
+                        <button onclick="quickTrack('${headline.replace(/'/g, "\\'")}', '${i}')" class="flex-1 py-2.5 rounded-xl bg-white/5 text-[10px] font-bold uppercase tracking-tighter hover:bg-gold hover:text-white transition-all">Track</button>
+                        <button onclick="dismissCard('${i}')" class="p-2.5 rounded-xl bg-white/5 text-secondary hover:bg-red-500/20 hover:text-red-500 transition-all">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="shareContent('${headline.replace(/'/g, "\\'")}', 'AI-powered summary for ${APP.profession}')" class="p-2.5 rounded-xl bg-white/5 text-gold hover:bg-gold hover:text-white transition-all">
+                            <i data-lucide="share-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                fragment.appendChild(card);
+                
+                // Lazy load AI summary
+                loadAiSummary(card, headline);
+            }
+            grid.appendChild(fragment);
+            lucide.createIcons();
+        }
+
+        async function loadAiSummary(card, headline) {
+            try {
+                const data = await callGemini(
+                    `You are a business analyst. Summarize the news for a ${APP.profession}.`,
+                    `News: ${headline}\nProvide: {"summary": "30 words", "whyMatters": "20 words", "impact": 1-10}`
+                );
+                
+                const summaryContainer = card.querySelector('.ai-summary-container');
+                summaryContainer.innerHTML = `
+                    <p class="text-xs text-secondary leading-relaxed">${data.summary}</p>
+                `;
+                
+                const whyMatters = card.querySelector('.why-matters');
+                whyMatters.innerText = data.whyMatters;
+                
+                const impactBadge = card.querySelector('.impact-badge');
+                impactBadge.innerText = data.impact;
+                impactBadge.classList.add(data.impact >= 7 ? 'bg-gold/20' : 'bg-white/5');
+            } catch (e) {
+                card.querySelector('.ai-summary-container').innerHTML = `<p class="text-xs text-red-500/50 italic">AI Analysis unavailable offline.</p>`;
+            }
+        }
+
+        function dismissCard(id) {
+            const card = document.getElementById(`news-card-${id}`);
+            card.style.transform = 'scale(0.9) translateY(20px)';
+            card.style.opacity = '0';
+            setTimeout(() => {
+                card.remove();
+                showToast("Story dismissed", "info");
+            }, 300);
+        }
+
+        function quickBrief(headline) {
+            setQuery(headline);
+            switchModule('navigator');
+            generateBriefing();
+        }
+
+        function quickTrack(headline, id) {
+            document.getElementById('tracker-query').value = headline;
+            switchModule('tracker');
+            generateTracker();
+            showToast("Story added to tracking arc", "success");
+        }
+
+        // 2. NAVIGATOR
+        function setQuery(q) {
+            document.getElementById('navigator-query').value = q;
+        }
+
+        async function generateBriefing() {
+            const query = document.getElementById('navigator-query').value;
+            if (!query) return;
+
+            const btnText = document.getElementById('brief-btn-text');
+            const spinner = document.getElementById('brief-btn-spinner');
+            const result = document.getElementById('briefing-result');
+
+            btnText.classList.add('hidden');
+            spinner.classList.remove('hidden');
+
+            try {
+                const data = await callGemini(
+                    "You are an elite research engine. Create a comprehensive briefing document.",
+                    `Topic: ${query}\nProvide: {"headline": "", "summary": "3 lines", "insights": ["insight 1", "insight 2", "insight 3", "insight 4", "insight 5"], "contraA": "opposing claim 1", "contraB": "opposing claim 2"}`
+                );
+
+                document.getElementById('brief-headline').innerText = data.headline;
+                document.getElementById('brief-summary').innerText = data.summary;
+                
+                const insightsDiv = document.getElementById('brief-insights');
+                insightsDiv.innerHTML = data.insights.map(i => `
+                    <div class="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:border-gold/50 transition-all cursor-pointer">
+                        <i data-lucide="arrow-right" class="w-4 h-4 text-gold shrink-0 mt-0.5"></i>
+                        <p class="text-sm">${i}</p>
+                    </div>
+                `).join('');
+                
+                document.getElementById('brief-contra-a').innerText = data.contraA;
+                document.getElementById('brief-contra-b').innerText = data.contraB;
+
+                // Save to DB for offline access
+                saveToDB('briefings', query, { ...data, timestamp: Date.now(), query });
+
+                result.classList.remove('hidden');
+                lucide.createIcons();
+                showToast("Briefing generated", "success");
+            } catch (e) {
+            } finally {
+                btnText.classList.remove('hidden');
+                spinner.classList.add('hidden');
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value;
+            if (!msg) return;
+
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `<div class="bg-gold/10 p-3 rounded-xl ml-4 text-right">${msg}</div>`;
+            input.value = '';
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+
+            try {
+                const data = await callGemini(
+                    "Answer the user query about the current briefing topic in <120 words.",
+                    `Topic: ${document.getElementById('brief-headline').innerText}\nQuestion: ${msg}\nProvide: {"answer": ""}`
+                );
+                chatDiv.innerHTML += `<div class="bg-white/5 p-3 rounded-xl mr-4">${data.answer}</div>`;
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+            } catch (e) {}
+        }
+
+        // 3. VIDEO STUDIO
+        async function generateVideoScript() {
+            const input = document.getElementById('studio-input').value;
+            if (!input) return;
+
+            const btnText = document.getElementById('video-btn-text');
+            const spinner = document.getElementById('video-btn-spinner');
+            btnText.classList.add('hidden');
+            spinner.classList.remove('hidden');
+
+            try {
+                const data = await callGemini(
+                    "You are a video producer. Create a 5-scene video script. For each scene, provide a single descriptive keyword for a background image (e.g., 'skyscraper', 'trading', 'robot').",
+                    `Content: ${input}\nProvide: {"scenes": [{"headline": "", "subtitle": "", "narration": "", "duration": 5, "keyword": ""}]}`
+                );
+
+                APP.videoScript = data.scenes;
+                currentSceneIndex = 0;
+                renderStoryboard();
+                
+                // Set initial preview
+                const s = data.scenes[0];
+                document.getElementById('preview-headline').innerText = s.headline;
+                document.getElementById('preview-subtitle').innerText = s.subtitle;
+                const [w, h] = APP.videoRatio === '16/9' ? [1920, 1080] : APP.videoRatio === '1/1' ? [1080, 1080] : [1080, 1920];
+                document.getElementById('video-bg').style.backgroundImage = `url('https://picsum.photos/seed/${s.keyword || s.headline.split(' ')[0]}/${w}/${h}')`;
+
+                document.getElementById('video-status').classList.add('hidden');
+                document.getElementById('play-btn').classList.remove('hidden');
+                document.getElementById('video-share-btn').classList.remove('hidden');
+                showToast("Storyboard ready", "success");
+            } catch (e) {
+            } finally {
+                btnText.classList.remove('hidden');
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function updateVideoRatio() {
+            const ratio = document.getElementById('video-ratio').value;
+            APP.videoRatio = ratio;
+            const preview = document.querySelector('.video-preview');
+            const parent = preview.parentElement.parentElement;
+            const canvas = document.getElementById('video-canvas');
+            
+            preview.style.aspectRatio = ratio;
+            
+            if (ratio === '16/9') {
+                preview.style.maxWidth = '100%';
+                parent.style.width = '600px';
+                canvas.classList.replace('p-8', 'p-12');
+            } else if (ratio === '1/1') {
+                preview.style.maxWidth = '400px';
+                parent.style.width = '400px';
+                canvas.classList.replace('p-12', 'p-8');
+            } else {
+                preview.style.maxWidth = '320px';
+                parent.style.width = '360px';
+                canvas.classList.replace('p-12', 'p-8');
+            }
+        }
+
+        function renderStoryboard() {
+            const list = document.getElementById('scene-list');
+            list.innerHTML = APP.videoScript.map((s, i) => `
+                <div id="scene-card-${i}" class="glass p-4 rounded-xl border ${i === currentSceneIndex ? 'border-gold shadow-[0_0_15px_rgba(201,168,76,0.2)]' : 'border-white/5'} flex flex-col gap-3 group hover:border-gold/30 transition-all">
+                    <div class="flex items-center gap-3">
+                        <div class="w-6 h-6 rounded-full ${i === currentSceneIndex ? 'bg-gold text-black' : 'bg-gold/20 text-gold'} flex items-center justify-center font-bold text-[10px] transition-colors">${i+1}</div>
+                        <input type="text" class="bg-transparent text-sm font-bold focus:outline-none focus:text-gold w-full" 
+                            value="${s.headline.replace(/"/g, '&quot;')}" oninput="updateScene(${i}, 'headline', this.value)">
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[8px] uppercase tracking-widest text-secondary font-bold">Subtitle</span>
+                            <input type="text" class="bg-transparent text-[10px] text-secondary focus:outline-none focus:text-white w-full border-b border-white/5 focus:border-gold/50 pb-1" 
+                                value="${s.subtitle.replace(/"/g, '&quot;')}" oninput="updateScene(${i}, 'subtitle', this.value)">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[8px] uppercase tracking-widest text-secondary font-bold">Narration</span>
+                            <textarea class="bg-transparent text-[10px] text-secondary focus:outline-none focus:text-white w-full h-16 resize-none border-b border-white/5 focus:border-gold/50 pb-1" 
+                                oninput="updateScene(${i}, 'narration', this.value)">${s.narration}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateScene(idx, field, val) {
+            if (!APP.videoScript[idx]) return;
+            APP.videoScript[idx][field] = val;
+            
+            // If this is the current scene being previewed, update the UI
+            if (idx === currentSceneIndex) {
+                const headline = document.getElementById('preview-headline');
+                const subtitle = document.getElementById('preview-subtitle');
+                if (field === 'headline') headline.innerText = val;
+                if (field === 'subtitle') subtitle.innerText = val;
+            }
+        }
+
+        let currentSceneIndex = 0;
+        let isPlaying = false;
+
+        async function playVideo() {
+            if (isPlaying || !APP.videoScript) {
+                console.log("Cannot play video: isPlaying=" + isPlaying + ", script=" + !!APP.videoScript);
+                return;
+            }
+            
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
+            
+            isPlaying = true;
+            APP.isPaused = false;
+            currentSceneIndex = 0;
+            document.getElementById('play-btn').classList.add('hidden');
+            document.getElementById('video-overlay').classList.add('hidden');
+            document.getElementById('video-controls').classList.remove('opacity-0', 'pointer-events-none');
+            
+            const lang = document.getElementById('video-lang').value;
+            const transition = document.getElementById('video-transition').value;
+            
+            try {
+                for (let i = 0; i < APP.videoScript.length; i++) {
+                    currentSceneIndex = i;
+                    renderStoryboard(); // Update highlight
+                    
+                    // Preload next image
+                    if (i + 1 < APP.videoScript.length) {
+                        preloadImage(APP.videoScript[i+1]);
+                    }
+                    await playScene(APP.videoScript[i], lang, transition);
+                }
+            } catch (err) {
+                console.error("Video playback error:", err);
+                showToast("Playback error: " + err.message, "error");
+            } finally {
+                isPlaying = false;
+                APP.isPaused = false;
+                currentSceneIndex = 0;
+                renderStoryboard();
+                document.getElementById('play-btn').classList.remove('hidden');
+                document.getElementById('video-overlay').classList.remove('hidden');
+                document.getElementById('video-controls').classList.add('opacity-0', 'pointer-events-none');
+                document.getElementById('video-status').innerText = "Replay Story";
+                document.getElementById('video-status').classList.remove('hidden');
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        function togglePause() {
+            if (!isPlaying) return;
+            APP.isPaused = !APP.isPaused;
+            const icon = document.getElementById('pause-icon');
+            icon.setAttribute('data-lucide', APP.isPaused ? 'play' : 'pause');
+            lucide.createIcons();
+
+            if (APP.isPaused) {
+                window.speechSynthesis.pause();
+            } else {
+                window.speechSynthesis.resume();
+            }
+        }
+
+        function preloadImage(scene) {
+            const seed = scene.keyword || scene.headline.split(' ')[0];
+            const [w, h] = APP.videoRatio === '16/9' ? [1920, 1080] : APP.videoRatio === '1/1' ? [1080, 1080] : [1080, 1920];
+            const url = `https://picsum.photos/seed/${seed}/${w}/${h}`;
+            if (!APP.imageCache.has(url)) {
+                const img = new Image();
+                img.src = url;
+                APP.imageCache.set(url, img);
+            }
+        }
+
+        async function playScene(scene, lang, transitionType) {
+            return new Promise((resolve) => {
+                const headline = document.getElementById('preview-headline');
+                const subtitle = document.getElementById('preview-subtitle');
+                const progress = document.getElementById('video-progress');
+                const bg = document.getElementById('video-bg');
+                const canvas = document.getElementById('video-canvas');
+
+                // Transition out
+                if (transitionType === 'fade') {
+                    canvas.style.opacity = '0';
+                } else if (transitionType === 'slide') {
+                    canvas.style.transform = 'translateX(100%)';
+                    canvas.style.opacity = '0';
+                } else if (transitionType === 'zoom') {
+                    canvas.style.transform = 'scale(0.5)';
+                    canvas.style.opacity = '0';
+                } else if (transitionType === 'none') {
+                    canvas.style.opacity = '1';
+                    canvas.style.transform = 'scale(1)';
+                } else {
+                    canvas.style.opacity = '0';
+                    canvas.style.transform = 'scale(0.95)';
+                }
+                
+                const transitionDelay = transitionType === 'none' ? 0 : 400;
+                setTimeout(() => {
+                    headline.innerText = scene.headline;
+                    subtitle.innerText = scene.subtitle;
+                    
+                    // Dynamic background
+                    const seed = scene.keyword || scene.headline.split(' ')[0];
+                    const [w, h] = APP.videoRatio === '16/9' ? [1920, 1080] : APP.videoRatio === '1/1' ? [1080, 1080] : [1080, 1920];
+                    bg.style.backgroundImage = `url('https://picsum.photos/seed/${seed}/${w}/${h}')`;
+                    
+                    // Transition in
+                    if (transitionType !== 'none') {
+                        canvas.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+                        canvas.style.opacity = '1';
+                        canvas.style.transform = 'translate(0) scale(1)';
+                    } else {
+                        canvas.style.transition = 'none';
+                        canvas.style.opacity = '1';
+                        canvas.style.transform = 'translate(0) scale(1)';
+                    }
+                    
+                    // Ken Burns effect
+                    bg.style.transition = `transform ${scene.duration + 1}s linear`;
+                    bg.style.transform = 'scale(1.3) rotate(1deg)';
+
+                    const utterance = new SpeechSynthesisUtterance(scene.narration);
+                    utterance.lang = lang;
+                    utterance.rate = 1.0;
+                    
+                    // Progress animation tracking
+                    let elapsed = 0;
+                    let duration = scene.duration * 1000;
+                    
+                    const updateProgress = () => {
+                        if (!isPlaying) return;
+                        if (!APP.isPaused) {
+                            elapsed += 16; // approx 60fps
+                            const percent = Math.min((elapsed / duration) * 100, 100);
+                            progress.style.width = `${percent}%`;
+                        }
+                        
+                        if (elapsed < duration) {
+                            requestAnimationFrame(updateProgress);
+                        } else {
+                            finish();
+                        }
+                    };
+
+                    let resolved = false;
+                    const finish = () => {
+                        if (resolved) return;
+                        resolved = true;
+                        resolve();
+                    };
+
+                    utterance.onend = () => {
+                        if (elapsed >= duration) finish();
+                    };
+                    
+                    window.speechSynthesis.speak(utterance);
+                    requestAnimationFrame(updateProgress);
+                }, transitionDelay);
+            });
+        }
+
+        function shareVideo() {
+            if (!APP.videoScript) return;
+            const headline = APP.videoScript[0].headline;
+            const summary = APP.videoScript.map(s => s.headline).join(' -> ');
+            shareContent(`Video Story: ${headline}`, summary);
+        }
+
+        // 4. STORY ARC TRACKER
+        async function generateTracker() {
+            const query = document.getElementById('tracker-query').value;
+            if (!query) return;
+
+            try {
+                const data = await callGemini(
+                    "You are a data visualizer. Analyze the story arc and sentiment. Provide detailed data for visualization.",
+                    `Topic: ${query}\nProvide: {"sentiment": [40, 55, 30, 70, 85, 60], "timeline": [{"date": "2024-01-15", "event": "Initial surge"}, {"date": "2024-02-20", "event": "Regulatory pushback"}], "entities": [{"name": "Company X", "mentions": 45, "sentiment": "Positive"}, {"name": "Entity Y", "mentions": 30, "sentiment": "Neutral"}, {"name": "Entity Z", "mentions": 15, "sentiment": "Negative"}], "predictions": ["Prediction 1", "Prediction 2"], "sentimentDistribution": {"positive": 60, "neutral": 25, "negative": 15}}`
+                );
+
+                APP.currentTrackerData = data;
+                // Save to DB for offline access
+                saveToDB('trackedStories', query, { ...data, timestamp: Date.now(), query });
+
+                renderTrackerVisuals(data);
+                showToast("Story arc mapped", "success");
+            } catch (e) {
+                console.error("Tracker generation failed", e);
+                showToast("Failed to map story arc", "error");
+            }
+        }
+
+        function renderTrackerVisuals(data) {
+            drawSentimentChart(data.sentiment);
+            drawSentimentDistChart(data.sentimentDistribution);
+            drawEntityMentionsChart(data.entities);
+            renderTimeline(data.timeline);
+            renderEntities(data.entities);
+            renderPredictions(data.predictions);
+        }
+
+        function drawSentimentChart(points) {
+            const ctx = document.getElementById('sentiment-chart').getContext('2d');
+            if (APP.charts.sentiment) APP.charts.sentiment.destroy();
+
+            APP.charts.sentiment = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: points.map((_, i) => `Point ${i + 1}`),
+                    datasets: [{
+                        label: 'Sentiment Score',
+                        data: points,
+                        borderColor: '#c9a84c',
+                        backgroundColor: 'rgba(201, 168, 76, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#c9a84c'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8E9299' } },
+                        x: { display: false }
+                    }
+                }
+            });
+        }
+
+        function drawSentimentDistChart(dist) {
+            const ctx = document.getElementById('sentiment-dist-chart').getContext('2d');
+            if (APP.charts.dist) APP.charts.dist.destroy();
+
+            APP.charts.dist = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positive', 'Neutral', 'Negative'],
+                    datasets: [{
+                        data: [dist.positive, dist.neutral, dist.negative],
+                        backgroundColor: ['#22c55e', '#8E9299', '#ef4444'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#8E9299', boxWidth: 12, font: { size: 10 } }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        function drawEntityMentionsChart(entities) {
+            const ctx = document.getElementById('entity-mentions-chart').getContext('2d');
+            if (APP.charts.mentions) APP.charts.mentions.destroy();
+
+            const topEntities = [...entities].sort((a, b) => b.mentions - a.mentions).slice(0, 5);
+
+            APP.charts.mentions = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topEntities.map(e => e.name),
+                    datasets: [{
+                        label: 'Mentions',
+                        data: topEntities.map(e => e.mentions),
+                        backgroundColor: '#c9a84c',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#8E9299' } },
+                        y: { grid: { display: false }, ticks: { color: '#8E9299', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function renderTimeline(items) {
+            const div = document.getElementById('tracker-timeline');
+            div.innerHTML = items.map(item => `
+                <div class="pl-8 relative animate-fade-up">
+                    <div class="absolute left-0 top-1.5 w-4 h-4 rounded-full bg-gold shadow-[0_0_10px_rgba(201,168,76,0.5)]"></div>
+                    <p class="text-[10px] font-bold text-gold uppercase mb-1">${item.date}</p>
+                    <p class="text-sm font-bold">${item.event}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderEntities(items) {
+            const div = document.getElementById('tracker-entities');
+            div.innerHTML = items.map(item => `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div>
+                        <p class="text-sm font-bold">${item.name}</p>
+                        <p class="text-[10px] text-secondary">${item.mentions} Mentions</p>
+                    </div>
+                    <span class="text-[10px] font-bold uppercase ${item.sentiment === 'Positive' ? 'text-green-500' : 'text-red-500'}">${item.sentiment}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderPredictions(items) {
+            const div = document.getElementById('tracker-predictions');
+            div.innerHTML = items.map(p => `
+                <div class="flex gap-3">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-gold shrink-0"></i>
+                    <p>${p}</p>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function filterTimeline() {
+            if (!APP.currentTrackerData) return;
+            const start = document.getElementById('tracker-start-date').value;
+            const end = document.getElementById('tracker-end-date').value;
+            
+            if (!start || !end) {
+                showToast("Please select both start and end dates", "info");
+                return;
+            }
+
+            const filtered = APP.currentTrackerData.timeline.filter(item => {
+                const d = new Date(item.date);
+                return d >= new Date(start) && d <= new Date(end);
+            });
+
+            renderTimeline(filtered);
+            showToast(`Filtered: ${filtered.length} events`, "success");
+        }
+
+        function resetTimeline() {
+            if (!APP.currentTrackerData) return;
+            document.getElementById('tracker-start-date').value = '';
+            document.getElementById('tracker-end-date').value = '';
+            renderTimeline(APP.currentTrackerData.timeline);
+        }
+
+        function sortEntities(criteria) {
+            if (!APP.currentTrackerData) return;
+            const sorted = [...APP.currentTrackerData.entities].sort((a, b) => {
+                if (criteria === 'mentions') return b.mentions - a.mentions;
+                if (criteria === 'sentiment') {
+                    const order = { 'Positive': 3, 'Neutral': 2, 'Negative': 1 };
+                    return order[b.sentiment] - order[a.sentiment];
+                }
+                return 0;
+            });
+            renderEntities(sorted);
+        }
+
+        async function renderSavedBriefings() {
+            const briefings = await getAllFromDB('briefings');
+            if (briefings.length === 0) return;
+
+            const result = document.getElementById('briefing-result');
+            const insightsDiv = document.getElementById('brief-insights');
+            
+            // Show the last one by default if offline
+            const last = briefings[briefings.length - 1];
+            document.getElementById('brief-headline').innerText = last.headline + " (Offline Cache)";
+            document.getElementById('brief-summary').innerText = last.summary;
+            insightsDiv.innerHTML = last.insights.map(i => `
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                    <i data-lucide="arrow-right" class="w-4 h-4 text-gold shrink-0 mt-0.5"></i>
+                    <p class="text-sm">${i}</p>
+                </div>
+            `).join('');
+            document.getElementById('brief-contra-a').innerText = last.contraA;
+            document.getElementById('brief-contra-b').innerText = last.contraB;
+            
+            result.classList.remove('hidden');
+            lucide.createIcons();
+            showToast("Showing saved briefing", "info");
+        }
+
+        async function renderSavedTrackers() {
+            const trackers = await getAllFromDB('trackedStories');
+            if (trackers.length === 0) return;
+
+            const last = trackers[trackers.length - 1];
+            APP.currentTrackerData = last;
+            renderTrackerVisuals(last);
+            showToast("Showing saved story arc", "info");
+        }
+
+        // 5. VERNACULAR
+        async function generateTranslations() {
+            const input = document.getElementById('vernacular-input').value;
+            if (!input) return;
+
+            const btnText = document.getElementById('vern-btn-text');
+            const spinner = document.getElementById('vern-btn-spinner');
+            btnText.classList.add('hidden');
+            spinner.classList.remove('hidden');
+
+            try {
+                const data = await callGemini(
+                    "You are a localization expert. Your goal is to translate and adapt the article for local Indian audiences. Don't just translate literally; adapt idioms, cultural references, and local context to make it feel native to each region.",
+                    `Article: ${input}\nProvide: {"hi": {"title": "", "content": "", "context": "Explain why this phrasing was chosen for Hindi speakers"}, "ta": {"title": "", "content": "", "context": "Explain why this phrasing was chosen for Tamil speakers"}, "te": {"title": "", "content": "", "context": "Explain why this phrasing was chosen for Telugu speakers"}, "bn": {"title": "", "content": "", "context": "Explain why this phrasing was chosen for Bengali speakers"}}`
+                );
+
+                const results = document.getElementById('vernacular-results');
+                results.innerHTML = Object.entries(data).map(([lang, content]) => `
+                    <div class="glass p-6 rounded-3xl border border-white/10 space-y-4 animate-fade-up">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-gold uppercase tracking-widest">${lang === 'hi' ? 'Hindi' : lang === 'ta' ? 'Tamil' : lang === 'te' ? 'Telugu' : 'Bengali'}</span>
+                            <button onclick="speakText('${content.content.replace(/'/g, "\\'")}', '${lang === 'hi' ? 'hi-IN' : lang === 'ta' ? 'ta-IN' : lang === 'te' ? 'te-IN' : 'bn-IN'}')" class="text-gold hover:scale-110 transition-all">
+                                <i data-lucide="volume-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <h3 class="text-xl font-bold">${content.title}</h3>
+                        <p class="text-sm text-secondary leading-relaxed">${content.content}</p>
+                        <div class="p-3 rounded-xl bg-gold/5 border border-gold/20">
+                            <p class="text-[10px] text-gold font-bold uppercase mb-1">Local Context</p>
+                            <p class="text-xs italic">${content.context}</p>
+                        </div>
+                    </div>
+                `).join('');
+                
+                results.classList.remove('hidden');
+                lucide.createIcons();
+                showToast("Translations ready", "success");
+            } catch (e) {
+            } finally {
+                btnText.classList.remove('hidden');
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function speakText(text, lang) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 6. LIVE TICKER
+        async function initTicker() {
+            const symbols = [
+                'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT', 
+                'XRPUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT', 'AVAXUSDT',
+                'DOGEUSDT', 'SHIBUSDT', 'LTCUSDT', 'UNIUSDT', 'ATOMUSDT'
+            ];
+            const container = document.getElementById('ticker-wrapper');
+
+            async function updateData() {
+                try {
+                    const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=${JSON.stringify(symbols)}`);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+                    
+                    const html = data.map(item => {
+                        const symbol = item.symbol.replace('USDT', '');
+                        const price = parseFloat(item.lastPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const change = parseFloat(item.priceChangePercent);
+                        const color = change >= 0 ? 'text-green-500' : 'text-red-500';
+                        const sign = change >= 0 ? '+' : '';
+                        const icon = change >= 0 ? '▲' : '▼';
+                        
+                        return `
+                            <div class="flex items-center gap-2 px-6 border-r border-white/5 group">
+                                <span class="font-bold text-secondary group-hover:text-gold transition-colors">${symbol}</span>
+                                <span class="mono font-medium">${price}</span>
+                                <span class="${color} text-[10px] flex items-center gap-0.5 font-bold">
+                                    ${icon} ${sign}${change.toFixed(2)}%
+                                </span>
+                            </div>
+                        `;
+                    }).join('');
+
+                    container.innerHTML = html + html; // Duplicate for seamless marquee
+                } catch (e) {
+                    console.error("Ticker fetch failed", e);
+                    container.innerHTML = '<span class="text-red-500 px-4 font-bold">MARKET DATA TEMPORARILY UNAVAILABLE</span>';
+                }
+            }
+
+            updateData();
+            setInterval(updateData, 30000); // Update every 30s
+        }
+
+        // Attach functions to window for global access (onclick handlers)
+        window.init = init;
+        window.switchModule = switchModule;
+        window.updateOnlineStatus = updateOnlineStatus;
+        window.shareContent = shareContent;
+        window.toggleSidebar = toggleSidebar;
+        window.toggleTheme = toggleTheme;
+        window.updateProfession = updateProfession;
+        window.saveApiKeyFromModal = saveApiKeyFromModal;
+        window.promptApiKey = promptApiKey;
+        window.renderNewsroom = renderNewsroom;
+        window.dismissCard = dismissCard;
+        window.setQuery = setQuery;
+        window.quickBrief = quickBrief;
+        window.quickTrack = quickTrack;
+        window.generateBriefing = generateBriefing;
+        window.sendChatMessage = sendChatMessage;
+        window.generateVideoScript = generateVideoScript;
+        window.updateVideoRatio = updateVideoRatio;
+        window.playVideo = playVideo;
+        window.shareVideo = shareVideo;
+        window.generateTracker = generateTracker;
+        window.filterTimeline = filterTimeline;
+        window.resetTimeline = resetTimeline;
+        window.sortEntities = sortEntities;
+        window.updateScene = updateScene;
+        window.togglePause = togglePause;
+        window.generateTranslations = generateTranslations;
+        window.speakText = speakText;
+
+        // Start
+        init();
+    </script>
+</body>
+</html>

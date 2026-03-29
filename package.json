@@ -1,0 +1,19 @@
+{
+  "name": "newsos-ai-native-news",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
+    "lint": "vite build"
+  },
+  "dependencies": {
+    "@google/genai": "^1.47.0",
+    "chart.js": "^4.5.1",
+    "lucide-react": "^0.546.0"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}
