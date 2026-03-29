@@ -6,6 +6,8 @@
 
 This contains everything you need to run your app locally.
 
+website : https://news-os-iota.vercel.app/
+
 View your app in AI Studio: https://ai.studio/apps/6bd6b510-f5d7-40fd-a4ea-c8a724f2bb80
 
 ## Run Locally
