@@ -1,19 +1,37 @@
 <div align="center">
 
+#NewsOS – AI Powered News Intelligence
+
+### Transforming Financial News into Smart Insights
+
+Website: https://news-os-iota.vercel.app/  
+AI Studio App: https://ai.studio/apps/6bd6b510-f5d7-40fd-a4ea-c8a724f2bb80  
+
 </div>
 
-# Run and deploy your AI Studio app
+##About the Project
+NewsOS is an AI-powered platform that analyzes and summarizes financial news in real-time.  
+It helps users quickly understand complex market information and make smarter decisions without information overload.
 
-This contains everything you need to run your app locally.
+##Problem Statement
+Every day, users are overwhelmed by large volumes of financial news across multiple platforms.  
+Understanding relevant insights quickly is difficult and time-consuming.
 
-website : https://news-os-iota.vercel.app/
+##Solution
+NewsOS uses AI to:
+- Extract key insights from news articles  
+- Summarize complex information instantly  
+- Deliver clear, concise, and actionable content  
 
-View your app in AI Studio: https://ai.studio/apps/6bd6b510-f5d7-40fd-a4ea-c8a724f2bb80
+##Key Features
+- AI-powered news summarization  
+- Real-time news processing  
+- Multi-language capability  
+- Insight-driven analysis   
 
-## Run Locally
+##Run Locally
 
-**Prerequisites:**  Node.js
-
+*Prerequisites:* Node.js  
 
 1. Install dependencies:
    `npm install`
