@@ -1,5 +1,8 @@
 {
-  "name": "NewsOS",
-  "description": "AI-Native Business News Platform for elite research, story tracking, and automated video storyboard generation.",
-  "requestFramePermissions": []
+  "name": "NewsBuddy",
+  "description": "AI-Native Business News Platform for elite research, story tracking, vernacular intelligence, and automated video storyboard generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
