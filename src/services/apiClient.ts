@@ -52,9 +52,10 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
     const message =
       (payload && typeof payload.error === 'string' && payload.error) ||
       `Request failed (HTTP ${response.status})`;
-    const err = new Error(message) as Error & { status?: number; code?: string };
+    const err = new Error(message) as Error & { status?: number; code?: string; retryAfterSec?: number };
     err.status = response.status;
     err.code = typeof payload?.code === 'string' ? payload.code : undefined;
+    err.retryAfterSec = typeof payload?.retryAfterSec === 'number' ? payload.retryAfterSec : undefined;
     throw err;
   }
 

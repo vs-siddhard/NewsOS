@@ -30,8 +30,25 @@ import { getLiveTicker } from './server/tickerService.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function parseCliOption(flag: string): string | undefined {
+  const idx = process.argv.indexOf(flag);
+  if (idx !== -1 && idx + 1 < process.argv.length) {
+    return process.argv[idx + 1];
+  }
+  const prefix = `${flag}=`;
+  const match = process.argv.find((arg) => arg.startsWith(prefix));
+  return match ? match.slice(prefix.length) : undefined;
+}
+
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = isProd ? Number(process.env.PORT) || 3000 : 3000;
+const cliPort = Number(parseCliOption('--port') ?? parseCliOption('-p'));
+const HOST = parseCliOption('--host') || '0.0.0.0';
+const PORT =
+  Number.isInteger(cliPort) && cliPort > 0 && cliPort <= 65535
+    ? cliPort
+    : isProd
+      ? Number(process.env.PORT) || 3000
+      : 3000;
 
 async function startServer() {
   const app = express();
@@ -148,7 +165,14 @@ async function startServer() {
   // --- AI ENDPOINTS (Phase 2 — Server-Side Gemini Only) ---
   function handleAiError(res: express.Response, err: unknown) {
     if (err instanceof AiServiceError) {
-      res.status(err.statusCode).json({ error: err.message, code: err.code });
+      if (err.retryAfterSec) {
+        res.setHeader('Retry-After', String(err.retryAfterSec));
+      }
+      res.status(err.statusCode).json({
+        error: err.message,
+        code: err.code,
+        ...(err.retryAfterSec ? { retryAfterSec: err.retryAfterSec } : {}),
+      });
       return;
     }
     res.status(500).json({ error: 'Unexpected AI service error.', code: 'AI_INTERNAL' });
@@ -243,13 +267,37 @@ async function startServer() {
   });
 
   // Frontend serving (Vite dev middleware in development, static dist in production)
+  let viteServer: { middlewares: express.RequestHandler; close: () => Promise<void> } | null = null;
+
   if (!isProd) {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true, hmr: false },
-      appType: 'spa',
+    const viteReady = import('vite').then(({ createServer: createViteServer }) =>
+      createViteServer({
+        server: { middlewareMode: true, hmr: false, ws: false },
+        appType: 'spa',
+      })
+    );
+
+    viteReady
+      .then((vite) => {
+        viteServer = vite;
+      })
+      .catch((err) => {
+        console.error(
+          '[NewsBuddy] Vite middleware failed to initialize:',
+          err instanceof Error ? err.message : 'Unknown error'
+        );
+        process.exit(1);
+      });
+
+    app.use((req, res, next) => {
+      if (viteServer) {
+        viteServer.middlewares(req, res, next);
+        return;
+      }
+      viteReady
+        .then((vite) => vite.middlewares(req, res, next))
+        .catch(next);
     });
-    app.use(vite.middlewares);
   } else {
     const distDir = path.resolve(__dirname, 'dist');
     app.use(express.static(distDir));
@@ -258,12 +306,31 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const httpServer = app.listen(PORT, HOST, () => {
     const env = getEnvSummary();
     console.log(
-      `[NewsBuddy] Server running on http://0.0.0.0:${PORT} (mode=${isProd ? 'production' : 'development'}, aiConfigured=${env.geminiConfigured})`
+      `[NewsBuddy] Server running on http://${HOST}:${PORT} (mode=${isProd ? 'production' : 'development'}, aiConfigured=${env.geminiConfigured})`
     );
   });
+
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[NewsBuddy] Received ${signal}, shutting down cleanly...`);
+    const finish = () => {
+      httpServer.close(() => process.exit(0));
+      setTimeout(() => process.exit(0), 2000).unref();
+    };
+    if (viteServer) {
+      viteServer.close().catch(() => undefined).finally(finish);
+    } else {
+      finish();
+    }
+  };
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 startServer().catch((err) => {

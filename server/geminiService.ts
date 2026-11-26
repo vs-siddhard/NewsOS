@@ -14,11 +14,13 @@ const aiCache = new Map<string, CacheItem>();
 export class AiServiceError extends Error {
   statusCode: number;
   code: string;
+  retryAfterSec?: number;
 
-  constructor(message: string, statusCode = 500, code = 'AI_ERROR') {
+  constructor(message: string, statusCode = 500, code = 'AI_ERROR', retryAfterSec?: number) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
+    this.retryAfterSec = retryAfterSec;
   }
 }
 
@@ -64,10 +66,30 @@ function scrubSecrets(text: string): string {
   return text.replace(/AIza[0-9A-Za-z_-]{20,}/g, '[REDACTED]').slice(0, 240);
 }
 
+function parseRetryAfterSec(rawMessage: string): number {
+  const match = rawMessage.match(/retry(?:Delay| in)\s*[:"]*\s*(\d+(?:\.\d+)?)s/i);
+  if (match?.[1]) {
+    const parsed = Math.ceil(Number(match[1]));
+    if (Number.isFinite(parsed) && parsed > 0) return Math.min(300, Math.max(15, parsed));
+  }
+  return 60;
+}
+
 function mapGeminiError(err: unknown, shouldLog = false): AiServiceError {
   if (err instanceof AiServiceError) return err;
   const rawMessage = err instanceof Error ? err.message : String(err);
   const status = (err as { status?: number })?.status;
+
+  if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(rawMessage)) {
+    const retryAfterSec = parseRetryAfterSec(rawMessage);
+    return new AiServiceError(
+      `Gemini API quota reached. Retry in ~${retryAfterSec}s, or select a billing-enabled API key in Settings > Secrets for higher limits.`,
+      429,
+      'AI_QUOTA_EXCEEDED',
+      retryAfterSec
+    );
+  }
+
   if (shouldLog) {
     console.warn('[NewsBuddy AI]', { status: status ?? 'unknown', message: scrubSecrets(rawMessage) });
   }
@@ -77,13 +99,6 @@ function mapGeminiError(err: unknown, shouldLog = false): AiServiceError {
       'AI request was rejected by the upstream provider. Please verify GEMINI_API_KEY in Settings > Secrets.',
       403,
       'AI_AUTH_ERROR'
-    );
-  }
-  if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(rawMessage)) {
-    return new AiServiceError(
-      'AI rate limit or quota reached. Please wait a moment and try again.',
-      429,
-      'AI_QUOTA_EXCEEDED'
     );
   }
   if (status === 404 || /NOT_FOUND/i.test(rawMessage)) {
@@ -138,6 +153,7 @@ const GEMINI_PRIMARY_MODEL = 'gemini-4-hydrogen';
 const GEMINI_FALLBACK_MODEL = 'gemini-3.1-flash-lite';
 const PER_ATTEMPT_TIMEOUT_MS = 18000;
 const inFlightRequests = new Map<string, Promise<unknown>>();
+const modelQuotaCooldownUntil = new Map<string, number>();
 
 async function generateStructuredJson<T>(params: {
   cacheKey: string;
@@ -156,16 +172,30 @@ async function generateStructuredJson<T>(params: {
   }
 
   const run = (async (): Promise<T> => {
-    usageStats.aiRequests += 1;
     const ai = getClient();
+    const now = Date.now();
 
-    const modelsToTry = params.preferFastModel
+    const orderedModels = params.preferFastModel
       ? [GEMINI_FALLBACK_MODEL, GEMINI_PRIMARY_MODEL]
       : [GEMINI_PRIMARY_MODEL, GEMINI_FALLBACK_MODEL];
+    const availableModels = orderedModels.filter((m) => (modelQuotaCooldownUntil.get(m) ?? 0) <= now);
+
+    if (availableModels.length === 0) {
+      const earliestExpiry = Math.min(...orderedModels.map((m) => modelQuotaCooldownUntil.get(m) ?? now + 60000));
+      const retryAfterSec = Math.max(5, Math.ceil((earliestExpiry - now) / 1000));
+      throw new AiServiceError(
+        `Gemini API quota reached. Retry in ~${retryAfterSec}s, or select a billing-enabled API key in Settings > Secrets for higher limits.`,
+        429,
+        'AI_QUOTA_EXCEEDED',
+        retryAfterSec
+      );
+    }
+
+    usageStats.aiRequests += 1;
     let lastError: unknown;
 
-    for (let i = 0; i < modelsToTry.length; i++) {
-      const model = modelsToTry[i];
+    for (let i = 0; i < availableModels.length; i++) {
+      const model = availableModels[i];
       const effectiveThinkingLevel =
         model === GEMINI_FALLBACK_MODEL
           ? ThinkingLevel.MINIMAL
@@ -205,12 +235,14 @@ async function generateStructuredJson<T>(params: {
         if (timeoutHandle) clearTimeout(timeoutHandle);
         lastError = err;
         const mapped = mapGeminiError(err, false);
-        // Only abort immediately on hard auth/config errors; allow fallback on 429/503/timeout
+        if (mapped.statusCode === 429) {
+          modelQuotaCooldownUntil.set(model, Date.now() + (mapped.retryAfterSec ?? 60) * 1000);
+        }
         if (mapped.statusCode === 401 || mapped.statusCode === 403 || mapped.code === 'AI_NOT_CONFIGURED') {
           usageStats.aiErrors += 1;
           throw mapGeminiError(err, true);
         }
-        if (i < modelsToTry.length - 1) {
+        if (i < availableModels.length - 1) {
           await new Promise((r) => setTimeout(r, 300));
         }
       }

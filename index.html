@@ -116,6 +116,13 @@
             opacity: 1;
         }
 
+        @media (hover: none) {
+            .news-card-actions {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -249,9 +256,16 @@
         </div>
 
         <nav class="flex-1 space-y-2">
-            <button onclick="switchModule('newsroom')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left" id="nav-newsroom">
+            <button onclick="switchModule('newsroom')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left bg-gold/10 text-gold" id="nav-newsroom">
                 <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
                 <span>My Newsroom</span>
+            </button>
+            <button onclick="switchModule('reading-list')" class="nav-btn w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left" id="nav-reading-list">
+                <span class="flex items-center gap-3">
+                    <i data-lucide="bookmark" class="w-5 h-5"></i>
+                    <span>Reading List</span>
+                </span>
+                <span id="nav-reading-count" class="hidden px-2 py-0.5 rounded-full bg-gold/20 text-gold text-[10px] font-bold mono">0</span>
             </button>
             <button onclick="switchModule('navigator')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left" id="nav-navigator">
                 <i data-lucide="search" class="w-5 h-5"></i>
@@ -379,10 +393,16 @@
                     </div>
                     <h3 id="impact-headline" class="text-2xl font-bold leading-snug">Loading latest headlines from configured publishers...</h3>
                     <p id="impact-summary" class="text-secondary text-sm leading-relaxed">Retrieving live articles with original source links and timestamps.</p>
-                    <a id="impact-source-link" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-1.5 text-xs text-gold font-bold hover:underline pt-1">
-                        <span>Read original source</span>
-                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                    </a>
+                    <div class="flex flex-wrap items-center gap-4 pt-1">
+                        <a id="impact-source-link" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-1.5 text-xs text-gold font-bold hover:underline">
+                            <span>Read original source</span>
+                            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                        </a>
+                        <button id="impact-save-btn" onclick="toggleImpactBannerSave()" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass border border-white/10 hover:border-gold text-xs font-bold transition-all">
+                            <i data-lucide="bookmark" class="w-3.5 h-3.5 text-gold"></i>
+                            <span id="impact-save-label">Save for Offline</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -636,7 +656,108 @@
                 </div>
             </div>
         </div>
+
+        <div id="module-reading-list" class="module p-8 space-y-8 hidden animate-fade-up">
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                    <p class="text-gold font-bold uppercase tracking-[0.2em] text-xs mb-2">Offline Library</p>
+                    <h2 class="text-4xl font-bold">Reading List</h2>
+                    <p class="text-secondary text-sm mt-1">Articles saved locally in your browser for instant offline reading.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="glass px-4 py-3 rounded-2xl border border-white/10 flex items-center gap-3 text-xs">
+                        <i data-lucide="hard-drive" class="w-4 h-4 text-gold"></i>
+                        <div>
+                            <p class="text-[10px] text-secondary uppercase font-bold tracking-wider">Offline Storage</p>
+                            <p id="reading-list-stats" class="font-bold mono">0 saved • 0 unread</p>
+                        </div>
+                    </div>
+                    <button id="reading-clear-read-btn" onclick="clearReadArticles()" class="hidden glass px-4 py-3 rounded-2xl border border-white/10 hover:border-red-500/40 hover:text-red-400 transition-all text-xs font-bold uppercase tracking-wider">
+                        Clear Read
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+                <div class="relative flex-1 max-w-xl">
+                    <input type="text" id="reading-search-input" oninput="renderReadingList()" placeholder="Search saved articles offline by headline, publisher, or summary..." class="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-gold transition-all">
+                    <i data-lucide="search" class="w-4 h-4 text-secondary absolute right-3.5 top-3.5 pointer-events-none"></i>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="setReadingFilter('all')" data-reading-filter="all" class="reading-filter-btn px-3.5 py-2 rounded-xl glass border border-gold text-gold text-xs font-bold transition-all">All</button>
+                    <button onclick="setReadingFilter('unread')" data-reading-filter="unread" class="reading-filter-btn px-3.5 py-2 rounded-xl glass border border-white/10 text-secondary hover:border-gold text-xs font-bold transition-all">Unread</button>
+                    <button onclick="setReadingFilter('read')" data-reading-filter="read" class="reading-filter-btn px-3.5 py-2 rounded-xl glass border border-white/10 text-secondary hover:border-gold text-xs font-bold transition-all">Read</button>
+                    <select id="reading-sort-select" onchange="renderReadingList()" class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-gold">
+                        <option value="newest">Newest Saved</option>
+                        <option value="oldest">Oldest Saved</option>
+                        <option value="impact">Highest Impact</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="reading-list-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Saved offline articles will be rendered here -->
+            </div>
+        </div>
     </main>
+
+    <!-- Offline Reader Modal -->
+    <div id="offline-reader-modal" class="hidden fixed inset-0 z-[90] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 md:p-8" onclick="if (event.target === this) closeOfflineReader()">
+        <div class="glass bg-[var(--bg-card)] border border-white/10 rounded-3xl max-w-2xl w-full max-h-[88vh] overflow-y-auto p-6 md:p-8 space-y-6 shadow-2xl animate-fade-up">
+            <div class="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
+                <div class="space-y-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gold/15 border border-gold/30 text-gold text-[10px] font-bold uppercase tracking-wider">
+                            <i data-lucide="bookmark-check" class="w-3 h-3"></i>
+                            <span>Saved Offline</span>
+                        </span>
+                        <span id="reader-publisher" class="text-[10px] font-bold text-gold uppercase tracking-widest"></span>
+                    </div>
+                    <p id="reader-timestamps" class="text-[11px] text-secondary mono"></p>
+                </div>
+                <button onclick="closeOfflineReader()" class="p-2 rounded-xl glass border border-white/10 hover:border-gold transition-all shrink-0" aria-label="Close reader">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <h3 id="reader-title" class="headline text-2xl md:text-3xl font-bold leading-snug"></h3>
+                <div id="reader-ai-box" class="hidden p-4 rounded-2xl bg-gold/5 border border-gold/20 space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[10px] font-bold text-gold uppercase tracking-widest">Saved AI Brief</span>
+                        <span id="reader-ai-meta" class="text-[10px] text-secondary mono"></span>
+                    </div>
+                    <p id="reader-ai-summary" class="text-sm leading-relaxed"></p>
+                    <p id="reader-why-matters" class="text-xs text-secondary leading-relaxed pt-1 border-t border-white/5"></p>
+                </div>
+                <div class="space-y-2">
+                    <p class="text-[10px] font-bold text-secondary uppercase tracking-widest">Saved Article Excerpt</p>
+                    <p id="reader-description" class="text-sm text-secondary leading-relaxed"></p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/10">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="reader-listen-btn" class="px-3.5 py-2 rounded-xl glass border border-white/10 hover:border-gold text-xs font-bold inline-flex items-center gap-1.5 transition-all">
+                        <i data-lucide="volume-2" class="w-3.5 h-3.5 text-gold"></i>
+                        <span>Listen</span>
+                    </button>
+                    <button id="reader-toggle-read-btn" class="px-3.5 py-2 rounded-xl glass border border-white/10 hover:border-gold text-xs font-bold inline-flex items-center gap-1.5 transition-all">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5 text-gold"></i>
+                        <span id="reader-toggle-read-label">Mark as Read</span>
+                    </button>
+                    <a id="reader-source-link" href="#" target="_blank" rel="noopener noreferrer" class="hidden px-3.5 py-2 rounded-xl bg-gold/15 border border-gold/30 text-gold hover:bg-gold hover:text-white text-xs font-bold inline-flex items-center gap-1.5 transition-all online-only">
+                        <span>Original Source</span>
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    </a>
+                </div>
+                <button id="reader-remove-btn" class="px-3.5 py-2 rounded-xl glass border border-white/10 hover:border-red-500/40 hover:text-red-400 text-xs font-bold inline-flex items-center gap-1.5 transition-all">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    <span>Remove</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast Container -->
     <div id="toast-container"></div>
@@ -676,6 +797,7 @@
             imageCache: new Map(),
             currentTrackerData: null,
             aiAvailable: true,
+            aiCooldownUntil: 0,
             newsCategory: 'all',
             newsQuery: '',
             newsPage: 1,
@@ -683,6 +805,11 @@
             newsArticles: [],
             newsMeta: null,
             sentimentCounts: { Bullish: 0, Neutral: 0, Bearish: 0 },
+            readingList: [],
+            savedArticleIds: new Set(),
+            readingFilter: 'all',
+            activeReaderArticleId: null,
+            articleAiCache: new Map(),
             charts: {
                 sentiment: null,
                 dist: null,
@@ -732,6 +859,11 @@
 
             window.addEventListener('online', updateOnlineStatus);
             window.addEventListener('offline', updateOnlineStatus);
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && APP.activeReaderArticleId) {
+                    closeOfflineReader();
+                }
+            });
         }
 
         async function checkServerCapabilities() {
@@ -752,16 +884,17 @@
             document.getElementById('current-time').innerText = now.toLocaleTimeString('en-US', timeOptions);
         }
 
-        // IndexedDB (Preserves NewsOS_DB v2 name and stores for existing user data)
+        // IndexedDB (Preserves NewsOS_DB name and existing stores; upgrades safely to v3 with readingList)
         async function initDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('NewsOS_DB', 2);
+                const request = indexedDB.open('NewsOS_DB', 3);
                 request.onupgradeneeded = (e) => {
                     const db = e.target.result;
                     if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
                     if (!db.objectStoreNames.contains('cache')) db.createObjectStore('cache');
                     if (!db.objectStoreNames.contains('briefings')) db.createObjectStore('briefings');
                     if (!db.objectStoreNames.contains('trackedStories')) db.createObjectStore('trackedStories');
+                    if (!db.objectStoreNames.contains('readingList')) db.createObjectStore('readingList');
                 };
                 request.onsuccess = (e) => {
                     APP.db = e.target.result;
@@ -773,8 +906,22 @@
 
         async function saveToDB(store, key, value) {
             if (!APP.db) return;
-            const tx = APP.db.transaction(store, 'readwrite');
-            tx.objectStore(store).put(value, key);
+            return new Promise((resolve, reject) => {
+                const tx = APP.db.transaction(store, 'readwrite');
+                tx.objectStore(store).put(value, key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function deleteFromDB(store, key) {
+            if (!APP.db) return;
+            return new Promise((resolve, reject) => {
+                const tx = APP.db.transaction(store, 'readwrite');
+                tx.objectStore(store).delete(key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
         }
 
         async function getFromDB(store, key) {
@@ -797,6 +944,23 @@
             });
         }
 
+        async function loadReadingListFromDB() {
+            const items = await getAllFromDB('readingList');
+            APP.readingList = (items || [])
+                .filter((item) => item && typeof item.id === 'string')
+                .sort((a, b) => new Date(b.savedAt || 0).getTime() - new Date(a.savedAt || 0).getTime());
+            APP.savedArticleIds = new Set(APP.readingList.map((item) => item.id));
+            updateReadingListBadge();
+        }
+
+        function updateReadingListBadge() {
+            const badge = document.getElementById('nav-reading-count');
+            if (!badge) return;
+            const count = APP.readingList.length;
+            badge.textContent = String(count);
+            badge.classList.toggle('hidden', count === 0);
+        }
+
         async function loadFromDB() {
             APP.profession = await getFromDB('settings', 'profession') || 'investor';
             APP.theme = await getFromDB('settings', 'theme') || 'dark';
@@ -804,6 +968,7 @@
             document.getElementById('profession-select').value = APP.profession;
             if (APP.theme === 'light') document.body.classList.add('light-theme');
             updateThemeIcon();
+            await loadReadingListFromDB();
         }
 
         // UI Helpers
@@ -818,6 +983,10 @@
             document.getElementById(`nav-${modId}`).classList.add('bg-gold/10', 'text-gold');
             
             APP.currentModule = modId;
+
+            if (modId === 'reading-list') {
+                renderReadingList();
+            }
 
             if (!APP.isOnline) {
                 if (modId === 'navigator') renderSavedBriefings();
@@ -960,6 +1129,25 @@
             }
         }
 
+        function syncImpactBannerSaveState(article) {
+            const saveBtn = document.getElementById('impact-save-btn');
+            const saveLabel = document.getElementById('impact-save-label');
+            if (!saveBtn || !saveLabel) return;
+            if (!article) {
+                saveBtn.classList.add('hidden');
+                return;
+            }
+            const isSaved = APP.savedArticleIds.has(article.id);
+            saveBtn.classList.remove('hidden');
+            saveBtn.classList.toggle('bg-gold/20', isSaved);
+            saveBtn.classList.toggle('border-gold/50', isSaved);
+            saveBtn.classList.toggle('text-gold', isSaved);
+            saveLabel.textContent = isSaved ? 'Saved' : 'Save for Offline';
+            const icon = saveBtn.querySelector('i');
+            if (icon) icon.setAttribute('data-lucide', isSaved ? 'bookmark-check' : 'bookmark');
+            lucide.createIcons();
+        }
+
         function updateImpactBanner(article, isOfflineCache) {
             const badge = document.getElementById('impact-badge-label');
             const meta = document.getElementById('impact-meta');
@@ -973,6 +1161,7 @@
                 headline.textContent = 'No matching articles in the current view';
                 summary.textContent = 'Try clearing your search query, choosing another category, or refreshing the live feed.';
                 link.classList.add('hidden');
+                syncImpactBannerSaveState(null);
                 return;
             }
 
@@ -990,6 +1179,7 @@
             } else {
                 link.classList.add('hidden');
             }
+            syncImpactBannerSaveState(article);
         }
 
         function updateFeedSentimentWidget() {
@@ -998,7 +1188,12 @@
             const { Bullish, Neutral, Bearish } = APP.sentimentCounts;
             const total = Bullish + Neutral + Bearish;
             if (total === 0) {
-                label.textContent = APP.aiAvailable ? 'Analyzing live feed...' : 'Source Excerpts Active';
+                const inCooldown = Date.now() < APP.aiCooldownUntil;
+                label.textContent = inCooldown
+                    ? 'AI Quota Paused • Live Feed'
+                    : APP.aiAvailable
+                        ? 'Analyzing live feed...'
+                        : 'Source Excerpts Active';
                 bar.style.width = '50%';
                 bar.className = 'h-full bg-gold transition-all';
                 return;
@@ -1132,8 +1327,9 @@
             const fragment = document.createDocumentFragment();
 
             articles.forEach((article, i) => {
+                const isSaved = APP.savedArticleIds.has(article.id);
                 const card = document.createElement('div');
-                card.className = 'news-card glass p-6 rounded-3xl border border-white/10 hover-scale animate-fade-up relative overflow-hidden group flex flex-col justify-between';
+                card.className = `news-card glass p-6 rounded-3xl border ${isSaved ? 'border-gold/40' : 'border-white/10'} hover-scale animate-fade-up relative overflow-hidden group flex flex-col justify-between`;
                 card.style.animationDelay = `${Math.min(i, 8) * 0.06}s`;
                 card.id = `news-card-${article.id}`;
 
@@ -1152,8 +1348,14 @@
                                 <span class="text-[10px] font-bold text-gold uppercase tracking-widest block truncate">${escapeHtml(article.publisher)} • ${escapeHtml(article.category)}</span>
                                 <span class="text-[10px] text-secondary mono block" title="Published: ${escapeHtml(pubExact)} | Retrieved: ${escapeHtml(retExact)}">Pub ${escapeHtml(pubRel)} • Ret ${escapeHtml(formatRelativeTime(article.retrievedAt))}</span>
                             </div>
-                            <div class="impact-badge w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-gold shrink-0" title="AI Impact Score (1-10)">
-                                --
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="saved-badge ${isSaved ? 'inline-flex' : 'hidden'} items-center gap-1 px-2 py-1 rounded-lg bg-gold/15 border border-gold/40 text-[10px] font-bold uppercase tracking-wider text-gold" title="Saved to offline Reading List">
+                                    <i data-lucide="bookmark-check" class="w-3 h-3"></i>
+                                    <span>Saved</span>
+                                </span>
+                                <div class="impact-badge w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-gold shrink-0" title="AI Impact Score (1-10)">
+                                    --
+                                </div>
                             </div>
                         </div>
                         <h3 class="headline text-xl font-bold mb-3 leading-tight">
@@ -1180,6 +1382,9 @@
                     <div class="news-card-actions flex gap-2 mt-5">
                         <button data-action="brief" class="flex-1 py-2.5 rounded-xl bg-white/5 text-[10px] font-bold uppercase tracking-tighter hover:bg-gold hover:text-white transition-all">Brief</button>
                         <button data-action="track" class="flex-1 py-2.5 rounded-xl bg-white/5 text-[10px] font-bold uppercase tracking-tighter hover:bg-gold hover:text-white transition-all">Track</button>
+                        <button data-action="save" class="p-2.5 rounded-xl ${isSaved ? 'bg-gold text-white' : 'bg-white/5 text-gold hover:bg-gold hover:text-white'} transition-all" title="${isSaved ? 'Remove from Reading List' : 'Save for offline reading'}" aria-pressed="${isSaved ? 'true' : 'false'}">
+                            <i data-lucide="${isSaved ? 'bookmark-check' : 'bookmark'}" class="w-4 h-4"></i>
+                        </button>
                         <button data-action="dismiss" class="p-2.5 rounded-xl bg-white/5 text-secondary hover:bg-red-500/20 hover:text-red-500 transition-all" title="Dismiss">
                             <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
@@ -1191,6 +1396,7 @@
 
                 card.querySelector('[data-action="brief"]').addEventListener('click', () => quickBrief(article.title));
                 card.querySelector('[data-action="track"]').addEventListener('click', () => quickTrack(article.title, article.id));
+                card.querySelector('[data-action="save"]').addEventListener('click', () => toggleSaveArticle(article));
                 card.querySelector('[data-action="dismiss"]').addEventListener('click', () => dismissCard(article.id));
                 card.querySelector('[data-action="share"]').addEventListener('click', () =>
                     shareContent(article.title, `${article.publisher}: ${article.description || article.title}`, article.url)
@@ -1202,7 +1408,8 @@
             grid.appendChild(fragment);
             lucide.createIcons();
 
-            if (!isOfflineCache && APP.aiAvailable && articles.length > 0) {
+            const canAutoSummarise = !isOfflineCache && APP.aiAvailable && Date.now() >= APP.aiCooldownUntil;
+            if (canAutoSummarise && articles.length > 0) {
                 loadAiSummariesBatch(articles.slice(0, 6));
             }
         }
@@ -1251,10 +1458,40 @@
                     if (summaryItem.sentiment === 'Bullish' || summaryItem.sentiment === 'Neutral' || summaryItem.sentiment === 'Bearish') {
                         APP.sentimentCounts[summaryItem.sentiment] += 1;
                     }
+
+                    APP.articleAiCache.set(article.id, {
+                        summary: summaryItem.summary,
+                        whyMatters: summaryItem.whyMatters,
+                        impact: summaryItem.impact,
+                        sentiment: summaryItem.sentiment,
+                        profession: APP.profession,
+                    });
+
+                    // Enrich already-saved offline copy with fresh AI brief if present
+                    if (APP.savedArticleIds.has(article.id)) {
+                        const existing = APP.readingList.find((item) => item.id === article.id);
+                        if (existing) {
+                            const enriched = {
+                                ...existing,
+                                aiSummary: summaryItem.summary || existing.aiSummary,
+                                whyMatters: summaryItem.whyMatters || existing.whyMatters,
+                                impact: summaryItem.impact ?? existing.impact,
+                                sentiment: summaryItem.sentiment || existing.sentiment,
+                                profession: APP.profession,
+                            };
+                            const idx = APP.readingList.findIndex((item) => item.id === article.id);
+                            if (idx !== -1) APP.readingList[idx] = enriched;
+                            saveToDB('readingList', article.id, enriched).catch(() => undefined);
+                        }
+                    }
                 });
                 updateFeedSentimentWidget();
             } catch (e) {
                 if (e.code === 'AI_NOT_CONFIGURED') APP.aiAvailable = false;
+                if (e.code === 'AI_QUOTA_EXCEEDED' || e.status === 429) {
+                    const sec = e.retryAfterSec || 60;
+                    APP.aiCooldownUntil = Date.now() + sec * 1000;
+                }
                 articles.forEach((article) => {
                     const card = document.getElementById(`news-card-${article.id}`);
                     const summaryContainer = card?.querySelector('.ai-summary-container');
@@ -1920,6 +2157,324 @@
             setInterval(updateData, 30000);
         }
 
+        // 7. READING LIST (Offline IndexedDB persistence)
+        function syncNewsroomCardSavedState(articleId) {
+            const isSaved = APP.savedArticleIds.has(articleId);
+            const card = document.getElementById(`news-card-${articleId}`);
+            if (card) {
+                card.classList.toggle('border-gold/40', isSaved);
+                card.classList.toggle('border-white/10', !isSaved);
+                const badge = card.querySelector('.saved-badge');
+                if (badge) {
+                    badge.classList.toggle('inline-flex', isSaved);
+                    badge.classList.toggle('hidden', !isSaved);
+                }
+                const btn = card.querySelector('[data-action="save"]');
+                if (btn) {
+                    btn.setAttribute('title', isSaved ? 'Remove from Reading List' : 'Save for offline reading');
+                    btn.setAttribute('aria-pressed', isSaved ? 'true' : 'false');
+                    btn.className = `p-2.5 rounded-xl ${isSaved ? 'bg-gold text-white' : 'bg-white/5 text-gold hover:bg-gold hover:text-white'} transition-all`;
+                    btn.innerHTML = `<i data-lucide="${isSaved ? 'bookmark-check' : 'bookmark'}" class="w-4 h-4"></i>`;
+                }
+            }
+            if (APP.newsArticles[0] && APP.newsArticles[0].id === articleId) {
+                syncImpactBannerSaveState(APP.newsArticles[0]);
+            }
+            lucide.createIcons();
+        }
+
+        async function toggleSaveArticle(article) {
+            if (!article || !article.id) return;
+            try {
+                if (APP.savedArticleIds.has(article.id)) {
+                    await deleteFromDB('readingList', article.id);
+                    APP.savedArticleIds.delete(article.id);
+                    APP.readingList = APP.readingList.filter((item) => item.id !== article.id);
+                    updateReadingListBadge();
+                    syncNewsroomCardSavedState(article.id);
+                    if (APP.currentModule === 'reading-list') renderReadingList();
+                    showToast('Removed from Reading List', 'info');
+                    return;
+                }
+
+                const aiMeta = APP.articleAiCache.get(article.id) || null;
+                const record = {
+                    id: article.id,
+                    title: article.title,
+                    description: article.description || '',
+                    publisher: article.publisher || 'Publisher',
+                    category: article.category || 'general',
+                    url: article.url || '',
+                    publishedAt: article.publishedAt || null,
+                    retrievedAt: article.retrievedAt || new Date().toISOString(),
+                    savedAt: new Date().toISOString(),
+                    aiSummary: aiMeta?.summary || null,
+                    whyMatters: aiMeta?.whyMatters || null,
+                    impact: aiMeta?.impact ?? null,
+                    sentiment: aiMeta?.sentiment || null,
+                    profession: aiMeta?.profession || APP.profession,
+                    read: false,
+                };
+
+                await saveToDB('readingList', article.id, record);
+                APP.savedArticleIds.add(article.id);
+                APP.readingList = [record, ...APP.readingList.filter((item) => item.id !== article.id)];
+                updateReadingListBadge();
+                syncNewsroomCardSavedState(article.id);
+                if (APP.currentModule === 'reading-list') renderReadingList();
+                showToast('Saved to Reading List for offline reading', 'success');
+            } catch {
+                showToast('Could not update offline Reading List', 'error');
+            }
+        }
+
+        function toggleImpactBannerSave() {
+            const topArticle = APP.newsArticles[0];
+            if (topArticle) toggleSaveArticle(topArticle);
+        }
+
+        function setReadingFilter(filter) {
+            APP.readingFilter = filter;
+            document.querySelectorAll('.reading-filter-btn').forEach((btn) => {
+                const active = btn.getAttribute('data-reading-filter') === filter;
+                btn.classList.toggle('border-gold', active);
+                btn.classList.toggle('text-gold', active);
+                btn.classList.toggle('border-white/10', !active);
+                btn.classList.toggle('text-secondary', !active);
+            });
+            renderReadingList();
+        }
+
+        async function toggleArticleReadState(articleId) {
+            const item = APP.readingList.find((entry) => entry.id === articleId);
+            if (!item) return;
+            item.read = !item.read;
+            await saveToDB('readingList', articleId, item);
+            renderReadingList();
+            if (APP.activeReaderArticleId === articleId) {
+                openOfflineReader(articleId);
+            }
+            showToast(item.read ? 'Marked as read' : 'Marked as unread', 'info');
+        }
+
+        async function removeFromReadingList(articleId) {
+            await deleteFromDB('readingList', articleId);
+            APP.savedArticleIds.delete(articleId);
+            APP.readingList = APP.readingList.filter((item) => item.id !== articleId);
+            updateReadingListBadge();
+            syncNewsroomCardSavedState(articleId);
+            if (APP.activeReaderArticleId === articleId) closeOfflineReader();
+            renderReadingList();
+            showToast('Removed from Reading List', 'info');
+        }
+
+        async function clearReadArticles() {
+            const readItems = APP.readingList.filter((item) => item.read);
+            if (readItems.length === 0) return;
+            for (const item of readItems) {
+                await deleteFromDB('readingList', item.id);
+                APP.savedArticleIds.delete(item.id);
+                syncNewsroomCardSavedState(item.id);
+            }
+            APP.readingList = APP.readingList.filter((item) => !item.read);
+            updateReadingListBadge();
+            renderReadingList();
+            showToast(`Cleared ${readItems.length} read article${readItems.length === 1 ? '' : 's'}`, 'info');
+        }
+
+        function openOfflineReader(articleId) {
+            const item = APP.readingList.find((entry) => entry.id === articleId);
+            if (!item) return;
+            APP.activeReaderArticleId = articleId;
+
+            const modal = document.getElementById('offline-reader-modal');
+            document.getElementById('reader-publisher').textContent = `${item.publisher} • ${item.category}`;
+            document.getElementById('reader-timestamps').textContent = `Saved ${formatExactTimestamp(item.savedAt)} • Published ${formatExactTimestamp(item.publishedAt)}`;
+            document.getElementById('reader-title').textContent = item.title;
+            document.getElementById('reader-description').textContent = item.description || 'No extended excerpt was provided by the publisher feed. Use Original Source when online to view the full article.';
+
+            const aiBox = document.getElementById('reader-ai-box');
+            if (item.aiSummary) {
+                aiBox.classList.remove('hidden');
+                const metaParts = [];
+                if (item.profession) metaParts.push(`${item.profession} lens`);
+                if (item.impact != null) metaParts.push(`Impact ${item.impact}/10`);
+                if (item.sentiment) metaParts.push(item.sentiment);
+                document.getElementById('reader-ai-meta').textContent = metaParts.join(' • ');
+                document.getElementById('reader-ai-summary').textContent = item.aiSummary;
+                const whyEl = document.getElementById('reader-why-matters');
+                if (item.whyMatters) {
+                    whyEl.textContent = `Strategic Impact: ${item.whyMatters}`;
+                    whyEl.classList.remove('hidden');
+                } else {
+                    whyEl.classList.add('hidden');
+                }
+            } else {
+                aiBox.classList.add('hidden');
+            }
+
+            const sourceLink = document.getElementById('reader-source-link');
+            const safeUrl = safeHttpUrl(item.url);
+            if (safeUrl) {
+                sourceLink.href = safeUrl;
+                sourceLink.classList.remove('hidden');
+            } else {
+                sourceLink.classList.add('hidden');
+            }
+
+            document.getElementById('reader-toggle-read-label').textContent = item.read ? 'Mark as Unread' : 'Mark as Read';
+            document.getElementById('reader-toggle-read-btn').onclick = () => toggleArticleReadState(item.id);
+            document.getElementById('reader-remove-btn').onclick = () => removeFromReadingList(item.id);
+            document.getElementById('reader-listen-btn').onclick = () => {
+                const spoken = `${item.title}. ${item.aiSummary || item.description || ''}`;
+                speakText(spoken, 'en-IN');
+            };
+
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeOfflineReader() {
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            APP.activeReaderArticleId = null;
+            document.getElementById('offline-reader-modal').classList.add('hidden');
+        }
+
+        function renderReadingList() {
+            const grid = document.getElementById('reading-list-grid');
+            const statsEl = document.getElementById('reading-list-stats');
+            const clearReadBtn = document.getElementById('reading-clear-read-btn');
+            const searchInput = document.getElementById('reading-search-input');
+            const sortSelect = document.getElementById('reading-sort-select');
+            if (!grid) return;
+
+            const totalSaved = APP.readingList.length;
+            const unreadCount = APP.readingList.filter((item) => !item.read).length;
+            const readCount = totalSaved - unreadCount;
+            if (statsEl) {
+                statsEl.textContent = `${totalSaved} saved • ${unreadCount} unread`;
+            }
+            if (clearReadBtn) {
+                clearReadBtn.classList.toggle('hidden', readCount === 0);
+            }
+
+            const q = (searchInput ? searchInput.value : '').trim().toLowerCase();
+            const sortMode = sortSelect ? sortSelect.value : 'newest';
+
+            let items = [...APP.readingList];
+            if (APP.readingFilter === 'unread') {
+                items = items.filter((item) => !item.read);
+            } else if (APP.readingFilter === 'read') {
+                items = items.filter((item) => item.read);
+            }
+
+            if (q) {
+                items = items.filter((item) =>
+                    [item.title, item.description, item.aiSummary, item.publisher, item.category]
+                        .filter(Boolean)
+                        .join(' ')
+                        .toLowerCase()
+                        .includes(q)
+                );
+            }
+
+            items.sort((a, b) => {
+                if (sortMode === 'oldest') {
+                    return new Date(a.savedAt || 0).getTime() - new Date(b.savedAt || 0).getTime();
+                }
+                if (sortMode === 'impact') {
+                    return (b.impact ?? -1) - (a.impact ?? -1);
+                }
+                return new Date(b.savedAt || 0).getTime() - new Date(a.savedAt || 0).getTime();
+            });
+
+            grid.innerHTML = '';
+
+            if (items.length === 0) {
+                const hasAny = totalSaved > 0;
+                grid.innerHTML = `
+                    <div class="col-span-full glass p-12 rounded-3xl border border-white/10 text-center space-y-4">
+                        <div class="w-14 h-14 mx-auto rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center text-gold">
+                            <i data-lucide="bookmark" class="w-7 h-7"></i>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-xl font-bold headline">${hasAny ? 'No saved articles match your filter' : 'Your offline Reading List is empty'}</p>
+                            <p class="text-xs text-secondary max-w-md mx-auto">
+                                ${hasAny
+                                    ? 'Try clearing your search or switching between All, Unread, and Read filters.'
+                                    : 'Save stories from My Newsroom to keep headlines, excerpts, and AI briefs stored locally for offline reading.'}
+                            </p>
+                        </div>
+                        ${!hasAny ? `<button onclick="switchModule('newsroom')" class="px-5 py-2.5 rounded-xl bg-gold-gradient text-white text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all">Browse My Newsroom</button>` : ''}
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            items.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = `glass p-6 rounded-3xl border ${item.read ? 'border-white/5 opacity-80' : 'border-gold/30'} hover-scale animate-fade-up flex flex-col justify-between space-y-4`;
+                card.style.animationDelay = `${Math.min(idx, 8) * 0.05}s`;
+
+                const safeUrl = safeHttpUrl(item.url);
+                const summaryText = item.aiSummary || item.description || 'Saved for offline reading.';
+
+                card.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="space-y-0.5 min-w-0">
+                                <span class="text-[10px] font-bold text-gold uppercase tracking-widest block truncate">${escapeHtml(item.publisher)} • ${escapeHtml(item.category)}</span>
+                                <span class="text-[10px] text-secondary mono block">Saved ${escapeHtml(formatRelativeTime(item.savedAt))} • Pub ${escapeHtml(formatRelativeTime(item.publishedAt))}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gold/15 border border-gold/40 text-[10px] font-bold uppercase tracking-wider text-gold">
+                                    <i data-lucide="bookmark-check" class="w-3 h-3"></i>
+                                    <span>Saved</span>
+                                </span>
+                                ${item.read ? `<span class="px-2 py-1 rounded-lg bg-white/5 text-[10px] font-bold uppercase text-secondary">Read</span>` : ''}
+                            </div>
+                        </div>
+
+                        <h3 class="headline text-xl font-bold leading-tight">${escapeHtml(item.title)}</h3>
+                        <p class="text-xs text-secondary leading-relaxed">${escapeHtml(summaryText)}</p>
+
+                        ${item.whyMatters ? `
+                            <div class="p-3 rounded-xl bg-gold/5 border border-gold/15">
+                                <p class="text-[10px] font-bold text-gold uppercase tracking-widest mb-1">Strategic Impact</p>
+                                <p class="text-xs text-secondary leading-relaxed">${escapeHtml(item.whyMatters)}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="pt-3 border-t border-white/5 flex flex-wrap items-center gap-2">
+                        <button data-rl-action="open" class="flex-1 py-2.5 px-3 rounded-xl bg-gold/15 border border-gold/30 text-gold text-[10px] font-bold uppercase tracking-wider hover:bg-gold hover:text-white transition-all">Read Offline</button>
+                        <button data-rl-action="toggle-read" class="py-2.5 px-3 rounded-xl bg-white/5 text-[10px] font-bold uppercase tracking-wider hover:bg-white/10 transition-all">${item.read ? 'Unread' : 'Mark Read'}</button>
+                        ${safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="p-2.5 rounded-xl bg-white/5 text-gold hover:bg-gold hover:text-white transition-all online-only" title="Open original source"><i data-lucide="external-link" class="w-4 h-4"></i></a>` : ''}
+                        <button data-rl-action="share" class="p-2.5 rounded-xl bg-white/5 text-gold hover:bg-gold hover:text-white transition-all" title="Share">
+                            <i data-lucide="share-2" class="w-4 h-4"></i>
+                        </button>
+                        <button data-rl-action="remove" class="p-2.5 rounded-xl bg-white/5 text-secondary hover:bg-red-500/20 hover:text-red-400 transition-all" title="Remove from Reading List">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+
+                card.querySelector('[data-rl-action="open"]').addEventListener('click', () => openOfflineReader(item.id));
+                card.querySelector('[data-rl-action="toggle-read"]').addEventListener('click', () => toggleArticleReadState(item.id));
+                card.querySelector('[data-rl-action="share"]').addEventListener('click', () =>
+                    shareContent(item.title, `${item.publisher}: ${item.aiSummary || item.description || item.title}`, item.url)
+                );
+                card.querySelector('[data-rl-action="remove"]').addEventListener('click', () => removeFromReadingList(item.id));
+
+                fragment.appendChild(card);
+            });
+
+            grid.appendChild(fragment);
+            lucide.createIcons();
+        }
+
         // Attach functions to window for global access (onclick handlers)
         window.init = init;
         window.switchModule = switchModule;
@@ -1934,6 +2489,15 @@
         window.searchNewsroom = searchNewsroom;
         window.changeNewsPage = changeNewsPage;
         window.dismissCard = dismissCard;
+        window.toggleSaveArticle = toggleSaveArticle;
+        window.toggleImpactBannerSave = toggleImpactBannerSave;
+        window.setReadingFilter = setReadingFilter;
+        window.renderReadingList = renderReadingList;
+        window.openOfflineReader = openOfflineReader;
+        window.closeOfflineReader = closeOfflineReader;
+        window.toggleArticleReadState = toggleArticleReadState;
+        window.removeFromReadingList = removeFromReadingList;
+        window.clearReadArticles = clearReadArticles;
         window.setQuery = setQuery;
         window.quickBrief = quickBrief;
         window.quickTrack = quickTrack;
